@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="fa" dir="rtl"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="theme-color" content="#000000"><link rel="manifest" href="/manifest.json">
 <title>زیرزمین شهر فرش</title>
 <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;700&display=swap" rel="stylesheet">
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"}}</script>
@@ -43,9 +44,19 @@ input{-webkit-user-select:text;user-select:text;touch-action:auto}
 #lamp{position:absolute;top:0;left:52%;width:2px;height:60px;background:#222;pointer-events:none}#lamp:after{content:"";position:absolute;bottom:-14px;left:-22px;width:46px;height:46px;border-radius:50%;background:radial-gradient(#f33,#a00 40%,transparent 70%);animation:fl 3s infinite}
 @keyframes fl{0%,100%{opacity:1}45%{opacity:.4}50%{opacity:1}55%{opacity:.2}}
 @media(max-width:760px){#menu.on{display:flex;flex-direction:column;gap:14px}#mright{align-self:stretch;justify-self:auto;width:100%}#mleft{max-width:none}}
+#chars{position:absolute;left:24%;bottom:0;width:52%;height:75%;z-index:0;opacity:.92;pointer-events:none}
+#mtop,#mleft,#mright,#mbot{position:relative;z-index:1}
+@media(max-width:760px){#chars{left:0;width:100%;height:40%;opacity:.5}}
 </style></head><body>
-<div class="scr on" id="menu"><div id="lamp"></div><div id="sign">شهر فرش<br><small style="font-size:45%">فرش، دیروز، امروز، همیشه...</small></div>
- <div id="mtop"><span>نسخه ۱.۰.۰</span><span id="onl"><i id="dot"></i><span id="ost">در حال اتصال...</span></span></div>
+<div class="scr on" id="menu"><svg id="chars" viewBox="0 0 600 400" preserveAspectRatio="xMidYMax meet" aria-hidden="true"><defs><filter id="gl"><feGaussianBlur stdDeviation="6"/></filter></defs>
+<g fill="#14050700" stroke="#a5180f" stroke-width="2" style="fill:#120406">
+<circle cx="130" cy="95" r="28"/><path d="M92 125 L168 125 L160 400 L100 400Z"/><path d="M96 130 L66 340 M164 130 L196 345" stroke-width="12" stroke-linecap="round" fill="none"/>
+<circle cx="300" cy="105" r="36"/><path d="M218 400 L230 172 Q300 140 370 172 L382 400Z"/><path d="M262 150 L338 150" stroke="#6a0806" stroke-width="10"/>
+<circle cx="470" cy="118" r="33"/><path d="M398 400 L414 178 Q470 150 526 178 L542 400Z"/><path d="M520 200 L548 150" stroke-width="12" stroke-linecap="round" fill="none"/></g>
+<circle cx="120" cy="92" r="4" fill="#f22"/><circle cx="140" cy="92" r="4" fill="#f22"/>
+<path d="M452 128 Q470 146 488 128" stroke="#ddd" stroke-width="3" fill="none"/><circle cx="460" cy="112" r="3" fill="#ddd"/><circle cx="480" cy="112" r="3" fill="#ddd"/>
+<circle cx="552" cy="132" r="30" fill="#3f3" filter="url(#gl)" opacity=".8"/><path d="M552 108 L545 125 L535 150 Q552 160 569 150 L559 125Z" fill="#6f6" stroke="#cfc"/></svg><div id="lamp"></div><div id="sign">شهر فرش<br><small style="font-size:45%">فرش، دیروز، امروز، همیشه...</small></div>
+ <div id="mtop"><span>نسخه ۱.۰.۰</span><button class="mb" id="fsm" style="width:auto;padding:6px 14px;font-size:15px">⛶ تمام‌صفحه</button><span id="onl"><i id="dot"></i><span id="ost">در حال اتصال...</span></span></div>
  <div id="mleft"><h1>زیرزمین<br>شهر فرش</h1>
   <button class="mb p" id="solo">▶ شروع داستان</button><button class="mb" id="mp">👥 بازی چندنفره</button><button class="mb" id="mk2">➕ ساخت اتاق</button>
   <button class="mb" id="set">⚙ تنظیمات</button><button class="mb" id="ab">ℹ درباره بازی</button><button class="mb" id="ex">⏏ خروج</button></div>
@@ -65,7 +76,7 @@ input{-webkit-user-select:text;user-select:text;touch-action:auto}
 <div class="scr" id="end"><h1 id="et"></h1><button onclick="location.reload()">بازگشت به منو</button></div>
 <div id="hud"><div id="obj"></div>
  <div class="bar" style="top:14px"><i id="st" style="background:#6a6;width:100%"></i></div>
- <div class="bar" style="top:30px"><i id="bt" style="background:#dc6;width:100%"></i></div><div id="sub"></div></div>
+ <div class="bar" style="top:30px"><i id="bt" style="background:#dc6;width:100%"></i></div><div id="sub"></div><button id="fsb" style="position:absolute;top:52px;left:14px;min-width:0;padding:6px 12px;font-size:20px;pointer-events:auto">⛶</button></div>
 <div id="fade"></div>
 <div id="touch"><div id="joy"><div id="knob"></div></div>
  <button class="tb" id="bS" style="right:6%;bottom:30%">دویدن</button><button class="tb" id="bC" style="right:16%;bottom:14%">خم</button>
@@ -159,9 +170,19 @@ joy.addEventListener('touchstart', e => { jid = e.changedTouches[0].identifier; 
 addEventListener('touchmove', e => { for (const t of e.changedTouches) {
   if (t.identifier === jid) { const r = joy.getBoundingClientRect(), dx = t.clientX - r.left - 65, dy = t.clientY - r.top - 65, d = Math.min(1, Math.hypot(dx, dy) / 55), a = Math.atan2(dy, dx); T.mx = Math.cos(a) * d; T.my = Math.sin(a) * d; knob.style.transform = `translate(${T.mx * 40}px,${T.my * 40}px)`; }
   else if (t.identifier === lid) { look(t.clientX - lx, t.clientY - ly, .005); lx = t.clientX; ly = t.clientY; } } }, { passive: false });
-addEventListener('touchstart', e => { if (!started) return; for (const t of e.changedTouches) if (t.clientX > innerWidth / 2 && lid === null && !t.target.classList.contains('tb')) { lid = t.identifier; lx = t.clientX; ly = t.clientY; } });
+addEventListener('touchstart', e => { if (!started) return; for (const t of e.changedTouches) if (t.clientX > innerWidth / 2 && lid === null && !t.target.closest('button')) { lid = t.identifier; lx = t.clientX; ly = t.clientY; } });
 addEventListener('touchend', e => { for (const t of e.changedTouches) { if (t.identifier === jid) { jid = null; T.mx = T.my = 0; knob.style.transform = ''; } if (t.identifier === lid) lid = null; } });
 const hold = (id, f) => { const b = $(id); b.addEventListener('touchstart', e => { f(true); e.preventDefault(); }, { passive: false }); b.addEventListener('touchend', () => f(false)); };
+const fsToggle = () => {
+  const d = document, el = d.documentElement, on = d.fullscreenElement || d.webkitFullscreenElement;
+  const note = t => started ? say(t, 6000) : $('#err').textContent = t;
+  if (on) return (d.exitFullscreen || d.webkitExitFullscreen).call(d);
+  const rq = el.requestFullscreen || el.webkitRequestFullscreen;
+  if (!rq) return note('این مرورگر تمام‌صفحه را پشتیبانی نمی‌کند. در آیفون: دکمهٔ اشتراک‌گذاری، سپس «Add to Home Screen» و بازی را از آیکون باز کن.');
+  Promise.resolve(rq.call(el)).then(() => { try { screen.orientation.lock('landscape').catch(() => {}); } catch (e) {} }).catch(() => note('تمام‌صفحه اجازه داده نشد'));
+};
+$('#fsm').onclick = fsToggle; $('#fsb').onclick = fsToggle;
+$('#solo').addEventListener('click', () => { if (isTouch && !document.fullscreenElement) fsToggle(); });
 hold('#bS', v => T.s = v); hold('#bE', v => v && interact()); hold('#bF', v => v && (me.fl = !me.fl)); hold('#bC', v => v && (me.crouch = !me.crouch));
 let gpPrev = {}; function pad(dt) {
   const g = [...(navigator.getGamepads?.() || [])].find(x => x); G.mx = G.my = 0; G.s = false; if (!g) return;
