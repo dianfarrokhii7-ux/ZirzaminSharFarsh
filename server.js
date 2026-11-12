@@ -4,44 +4,7 @@ const srv = http.createServer(app), io = new Server(srv);
 const C = 4, rnd = n => Math.floor(Math.random() * n);
 const cell = v => Math.floor(v / C), mid = c => (c + 0.5) * C;
 const open = (L, c, r) => L.MAP[r] && L.MAP[r][c] === '.';
-function gen(n, loops) { // perfect maze (always connected) + extra openings
-  const m = [...Array(n)].map(() => Array(n).fill('#')), st = [[1, 1]]; m[1][1] = '.';
-  while (st.length) {
-    const [c, r] = st[st.length - 1];
-    const nb = [[2, 0], [-2, 0], [0, 2], [0, -2]].map(([a, b]) => [c + a, r + b, a / 2, b / 2]).filter(([x, y]) => x > 0 && y > 0 && x < n - 1 && y < n - 1 && m[y][x] === '#');
-    if (!nb.length) { st.pop(); continue; }
-    const [x, y, a, b] = nb[rnd(nb.length)]; m[r + b][c + a] = '.'; m[y][x] = '.'; st.push([x, y]);
-  }
-  for (let i = 0; i < loops * 20 && loops > 0; i++) {
-    const x = 1 + rnd(n - 2), y = 1 + rnd(n - 2);
-    if (m[y][x] === '#' && ((m[y][x - 1] === '.' && m[y][x + 1] === '.') || (m[y - 1][x] === '.' && m[y + 1][x] === '.'))) { m[y][x] = '.'; loops--; }
-  }
-  return m.map(r => r.join(''));
-}
-const L1 = { MAP: ["###############","#.....#.......#","#.###.#.#####.#","#.#...#.....#.#","#.#.#######.#.#","#...#.....#...#","###.#.###.#.###","#...#.#...#...#","#.###.#.###.#.#","#.....#.....#.#","#.#########.#.#","#.#.......#...#","#.#.#####.###.#","#...#...#.....#","###############"], ITEMS: [[13,1],[3,3],[1,13]], LOCKERS: [[5,5],[9,9],[3,11],[7,7]], EXIT: [13,13],
-  ch: 1, title: 'فصل ۱: انبار فرش‌های ممنوعه', fog: 0x050202, amb: '#221111', floor: '#5a1511', icol: '#ffd34a', lab: 'کلیدها', go: 'به آسانسور (نور سبز) برو', verb: 'یک کلید پیدا کرد', chase: 5.2,
-  obj: 'هدف: سه کلید را پیدا کن و به آسانسور مخفی برس', intro: ['در تاریکی بیدار می‌شوی...', 'سرت درد می‌کند و بوی فرش کهنه می‌آید.', 'باید راه خروج را پیدا کنی.'] };
-const L0 = { MAP: ["###############","#.............#","#.............#","#.............#","#.............#","#.............#","#.............#","######...######","#.............#","#.............#","#.............#","#.............#","#.............#","#.............#","###############"], ITEMS: [[7,3]], LOCKERS: [], EXIT: [13,1], SP: [7,12], ch: 0, noEnemy: true,
-  title: 'پیش‌درآمد: شهر فرش', fog: 0x070b14, amb: '#445577', floor: '#6a3a22', icol: '#ffd34a', lab: 'گفت‌وگو', go: 'از پله‌های زیرزمین (نور قرمز) پایین برو', verb: 'با فروشنده صحبت کرد', chase: 0,
-  obj: 'هدف: وارد مغازهٔ شهر فرش شو و با فروشنده صحبت کن', intro: ['شب است. جلوی مغازهٔ «شهر فرش» ایستاده‌ای.', 'با ۱۰۰ ریال آمده‌ای فرش بخری...', 'وارد مغازه شو.'] };
-function pickCells(L, k) {
-  const cs = []; L.MAP.forEach((row, r) => [...row].forEach((ch, c) => ch === '.' && c + r > 8 && !(c === L.EXIT[0] && r === L.EXIT[1]) && cs.push([c, r])));
-  for (let i = cs.length - 1; i > 0; i--) { const j = rnd(i + 1);[cs[i], cs[j]] = [cs[j], cs[i]]; }
-  return cs.splice(0, k);
-}
-function level(ch) {
-  if (ch === 0) return L0; if (ch === 1) return L1;
-  const n = ch === 2 ? 15 : 17;
-  const L = { MAP: gen(n, ch === 2 ? 14 : 8), EXIT: [n - 2, n - 2], ch };
-  if (ch === 2) Object.assign(L, { title: 'فصل ۲: آزمایشگاه اکسیر جوانی', fog: 0x020a04, amb: '#113322', floor: '#2f5a44', icol: '#66ff88', lab: 'کارت‌ها و دستگاه‌ها', go: 'به در خروج آزمایشگاه (نور سبز) برو', verb: 'یکی از اهداف آزمایشگاه را انجام داد', chase: 5.6,
-    obj: 'هدف: کارت‌های دسترسی را بردار و دستگاه‌های آزمایشگاه را خاموش کن', intro: ['«این‌جا آزمایشگاه اکسیر جوانی است...»', 'بطری‌های سبز روی میزها می‌درخشند.', 'باید دستگاه‌ها را خاموش کنی و بگریزی.'] });
-  else Object.assign(L, { title: 'فصل ۳: راهروهای بی‌پایان', fog: 0x0a0205, amb: '#331133', floor: '#33224a', icol: '#cc88ff', lab: 'نشانه‌های خروج', go: 'خروج واقعی را پیدا کن (نور سبز)', verb: 'یک نشانهٔ خروج پیدا کرد', chase: 5.9,
-    obj: 'هدف: راهروها عوض می‌شوند؛ حلقه‌های بنفش تو را جابه‌جا می‌کنند. سه نشانه را پیدا کن و خروج واقعی را بیاب', intro: ['اتاق‌ها تکرار می‌شوند...', 'راهروها همان‌طور که یادت بود نیستند.', 'خروج واقعی جایی این‌جاست.'] });
-  const nI = ch === 2 ? 4 : 3, cs = pickCells(L, nI + 4 + 6);
-  L.ITEMS = cs.splice(0, nI); L.LOCKERS = cs.splice(0, 4);
-  if (ch === 3) L.PORTALS = [[cs[0], cs[1]], [cs[2], cs[3]], [cs[4], cs[5]]];
-  return L;
-}
+const { level } = require('./levels');
 const rooms = Object.create(null);
 const code = () => { let s; do s = String(Math.floor(1000 + Math.random() * 9000)); while (rooms[s]); return s; };
 function bfsNext(L, a, b) {
@@ -80,7 +43,7 @@ io.on('connection', s => {
   s.on('pickup', i => {
     const q = R && R.players[s.id]; if (!q || q.cap || !R.L.ITEMS[i] || R.keys[i]) return;
     const it = R.L.ITEMS[i];
-    if (Math.hypot(q.x - mid(it[0]), q.z - mid(it[1])) < 3.5) { R.keys[i] = 1; io.to(R.code).emit('say', q.name + ' ' + R.L.verb); }
+    if (Math.hypot(q.x - mid(it[0]), q.z - mid(it[1])) < 3.5) { R.keys[i] = 1; const mg = R.L.msgs && R.L.msgs[i]; io.to(R.code).emit('say', mg ? mg.replace('{n}', q.name) : q.name + ' ' + R.L.verb); }
   });
   s.on('rescue', id => {
     const a = R && R.players[s.id], b = R && R.players[id];
@@ -100,7 +63,7 @@ setInterval(() => {
     if (L.noEnemy) { e.x = e.z = -99; e.chase = false; }
     else if (e.stun > 0) e.stun -= dt;
     else {
-      let tgt = null, best = 16;
+      let tgt = null, best = L.range || 16;
       for (const [, p] of alive) { const d = Math.hypot(p.x - e.x, p.z - e.z); if (d < best && (!p.hid || d < 2)) { best = d; tgt = p; } }
       e.chase = !!tgt;
       if (tgt) e.goal = [cell(tgt.x), cell(tgt.z)];
@@ -116,7 +79,7 @@ setInterval(() => {
     }
     if (ps.length && ps.every(([, p]) => p.cap)) { load(r, r.ch); io.to(r.code).emit('wipe'); continue; }
     if (r.keys.every(Boolean) && alive.some(([, p]) => Math.hypot(p.x - mid(L.EXIT[0]), p.z - mid(L.EXIT[1])) < 3)) {
-      if (r.ch < 3) { load(r, r.ch + 1); io.to(r.code).emit('started', send(r)); }
+      if (r.ch < 7) { load(r, r.ch + 1); io.to(r.code).emit('started', send(r)); }
       else { r.started = false; io.to(r.code).emit('win'); }
       continue;
     }
