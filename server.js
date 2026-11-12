@@ -1,0 +1,122 @@
+const express = require('express'), http = require('http'), { Server } = require('socket.io');
+const app = express(); app.use(express.static('public'));
+const srv = http.createServer(app), io = new Server(srv);
+const C = 4, rnd = n => Math.floor(Math.random() * n);
+const cell = v => Math.floor(v / C), mid = c => (c + 0.5) * C;
+const open = (L, c, r) => L.MAP[r] && L.MAP[r][c] === '.';
+function gen(n, loops) { // perfect maze (always connected) + extra openings
+  const m = [...Array(n)].map(() => Array(n).fill('#')), st = [[1, 1]]; m[1][1] = '.';
+  while (st.length) {
+    const [c, r] = st[st.length - 1];
+    const nb = [[2, 0], [-2, 0], [0, 2], [0, -2]].map(([a, b]) => [c + a, r + b, a / 2, b / 2]).filter(([x, y]) => x > 0 && y > 0 && x < n - 1 && y < n - 1 && m[y][x] === '#');
+    if (!nb.length) { st.pop(); continue; }
+    const [x, y, a, b] = nb[rnd(nb.length)]; m[r + b][c + a] = '.'; m[y][x] = '.'; st.push([x, y]);
+  }
+  for (let i = 0; i < loops * 20 && loops > 0; i++) {
+    const x = 1 + rnd(n - 2), y = 1 + rnd(n - 2);
+    if (m[y][x] === '#' && ((m[y][x - 1] === '.' && m[y][x + 1] === '.') || (m[y - 1][x] === '.' && m[y + 1][x] === '.'))) { m[y][x] = '.'; loops--; }
+  }
+  return m.map(r => r.join(''));
+}
+const L1 = { MAP: ["###############","#.....#.......#","#.###.#.#####.#","#.#...#.....#.#","#.#.#######.#.#","#...#.....#...#","###.#.###.#.###","#...#.#...#...#","#.###.#.###.#.#","#.....#.....#.#","#.#########.#.#","#.#.......#...#","#.#.#####.###.#","#...#...#.....#","###############"], ITEMS: [[13,1],[3,3],[1,13]], LOCKERS: [[5,5],[9,9],[3,11],[7,7]], EXIT: [13,13],
+  ch: 0, title: 'فصل ۱: انبار فرش‌های ممنوعه', fog: 0x050202, amb: '#221111', floor: '#5a1511', icol: '#ffd34a', lab: 'کلیدها', go: 'به آسانسور (نور سبز) برو', verb: 'یک کلید پیدا کرد', chase: 5.2,
+  obj: 'هدف: سه کلید را پیدا کن و به آسانسور مخفی برس', intro: ['«این فرش چنده؟»', '«ما فقط ۱۰۰ ریال داریم.»', '«یه فرش کارکرده تو زیرزمین دارم. بیا پایین نشونت بدم.»', 'همه‌چیز سیاه می‌شود...'] };
+function pickCells(L, k) {
+  const cs = []; L.MAP.forEach((row, r) => [...row].forEach((ch, c) => ch === '.' && c + r > 8 && !(c === L.EXIT[0] && r === L.EXIT[1]) && cs.push([c, r])));
+  for (let i = cs.length - 1; i > 0; i--) { const j = rnd(i + 1);[cs[i], cs[j]] = [cs[j], cs[i]]; }
+  return cs.splice(0, k);
+}
+function level(ch) {
+  if (ch === 0) return L1;
+  const n = ch === 1 ? 15 : 17;
+  const L = { MAP: gen(n, ch === 1 ? 14 : 8), EXIT: [n - 2, n - 2], ch };
+  if (ch === 1) Object.assign(L, { title: 'فصل ۲: آزمایشگاه اکسیر جوانی', fog: 0x020a04, amb: '#113322', floor: '#2f5a44', icol: '#66ff88', lab: 'کارت‌ها و دستگاه‌ها', go: 'به در خروج آزمایشگاه (نور سبز) برو', verb: 'یکی از اهداف آزمایشگاه را انجام داد', chase: 5.6,
+    obj: 'هدف: کارت‌های دسترسی را بردار و دستگاه‌های آزمایشگاه را خاموش کن', intro: ['«این‌جا آزمایشگاه اکسیر جوانی است...»', 'بطری‌های سبز روی میزها می‌درخشند.', 'باید دستگاه‌ها را خاموش کنی و بگریزی.'] });
+  else Object.assign(L, { title: 'فصل ۳: راهروهای بی‌پایان', fog: 0x0a0205, amb: '#331133', floor: '#33224a', icol: '#cc88ff', lab: 'نشانه‌های خروج', go: 'خروج واقعی را پیدا کن (نور سبز)', verb: 'یک نشانهٔ خروج پیدا کرد', chase: 5.9,
+    obj: 'هدف: راهروها عوض می‌شوند؛ حلقه‌های بنفش تو را جابه‌جا می‌کنند. سه نشانه را پیدا کن و خروج واقعی را بیاب', intro: ['اتاق‌ها تکرار می‌شوند...', 'راهروها همان‌طور که یادت بود نیستند.', 'خروج واقعی جایی این‌جاست.'] });
+  const nI = ch === 1 ? 4 : 3, cs = pickCells(L, nI + 4 + 6);
+  L.ITEMS = cs.splice(0, nI); L.LOCKERS = cs.splice(0, 4);
+  if (ch === 2) L.PORTALS = [[cs[0], cs[1]], [cs[2], cs[3]], [cs[4], cs[5]]];
+  return L;
+}
+const rooms = Object.create(null);
+const code = () => { let s; do s = String(Math.floor(1000 + Math.random() * 9000)); while (rooms[s]); return s; };
+function bfsNext(L, a, b) {
+  const q = [a], prev = {}, k = p => p[0] + ',' + p[1]; prev[k(a)] = null; const seen = new Set([k(a)]);
+  while (q.length) {
+    const p = q.shift();
+    if (p[0] === b[0] && p[1] === b[1]) { let cur = p, last = p; while (prev[k(cur)]) { last = cur; cur = prev[k(cur)]; } return last; }
+    for (const [dx, dz] of [[1,0],[-1,0],[0,1],[0,-1]]) { const n = [p[0] + dx, p[1] + dz]; if (open(L, n[0], n[1]) && !seen.has(k(n))) { seen.add(k(n)); prev[k(n)] = p; q.push(n); } }
+  } return a;
+}
+function load(r, ch) {
+  r.ch = ch; const L = r.L = level(ch);
+  r.cells = []; L.MAP.forEach((row, y) => [...row].forEach((c, x) => c === '.' && r.cells.push([x, y])));
+  r.keys = L.ITEMS.map(() => 0);
+  const f = r.cells.filter(c => c[0] + c[1] > 12)[0] || r.cells[r.cells.length - 1];
+  r.e = { x: mid(f[0]), z: mid(f[1]), goal: f, stun: 0, chase: false };
+  Object.values(r.players).forEach(p => Object.assign(p, { x: mid(1), z: mid(1), cap: false, hid: false }));
+}
+const send = r => ({ ...r.L, C, SPAWN: [1, 1] });
+const pub = r => ({ code: r.code, host: r.host, started: r.started, players: Object.fromEntries(Object.entries(r.players).map(([i, p]) => [i, { name: p.name, ready: p.ready, col: p.col }])) });
+io.on('connection', s => {
+  let R = null;
+  const join = (r, pr) => {
+    if (Object.keys(r.players).length >= 4 || r.started) return s.emit('err', 'اتاق پر است یا بازی شروع شده است');
+    pr = pr || {}; const nm = String(pr.name || '').replace(/[<>&"'`]/g, '').slice(0, 16) || 'بازیکن', col = /^#[0-9a-f]{6}$/i.test(pr.col) ? pr.col : '#3a7acc';
+    R = r; s.join(r.code);
+    r.players[s.id] = { name: nm, col, x: 6, z: 6, ry: 0, cap: false, hid: false, ready: false };
+    io.to(r.code).emit('lobby', pub(r));
+  };
+  s.on('create', pr => { const c = code(); rooms[c] = { code: c, host: s.id, players: {}, started: false }; load(rooms[c], 0); join(rooms[c], pr); });
+  s.on('join', (c, pr) => rooms[c] ? join(rooms[c], pr) : s.emit('err', 'اتاقی با این کد پیدا نشد'));
+  s.on('ready', v => { if (!R) return; R.players[s.id].ready = !!v; io.to(R.code).emit('lobby', pub(R)); });
+  s.on('start', () => { if (!R || R.host !== s.id || R.started) return; R.started = true; load(R, 0); io.to(R.code).emit('started', send(R)); });
+  s.on('move', p => { if (!p) return; const q = R && R.players[s.id]; if (q && !q.cap) { q.x = +p.x || 0; q.z = +p.z || 0; q.ry = +p.ry || 0; } });
+  s.on('hide', v => { const q = R && R.players[s.id]; if (q && !q.cap) q.hid = !!v; });
+  s.on('pickup', i => {
+    const q = R && R.players[s.id]; if (!q || q.cap || !R.L.ITEMS[i] || R.keys[i]) return;
+    const it = R.L.ITEMS[i];
+    if (Math.hypot(q.x - mid(it[0]), q.z - mid(it[1])) < 3.5) { R.keys[i] = 1; io.to(R.code).emit('say', q.name + ' ' + R.L.verb); }
+  });
+  s.on('rescue', id => {
+    const a = R && R.players[s.id], b = R && R.players[id];
+    if (a && b && !a.cap && b.cap && Math.hypot(a.x - b.x, a.z - b.z) < 3.5) { b.cap = false; io.to(R.code).emit('say', b.name + ' نجات پیدا کرد'); }
+  });
+  s.on('disconnect', () => {
+    if (!R) return; delete R.players[s.id];
+    if (!Object.keys(R.players).length) delete rooms[R.code];
+    else { if (R.host === s.id) R.host = Object.keys(R.players)[0]; io.to(R.code).emit('lobby', pub(R)); }
+  });
+});
+setInterval(() => {
+  const dt = 0.1;
+  for (const r of Object.values(rooms)) {
+    if (!r.started) continue;
+    const L = r.L, ps = Object.entries(r.players), e = r.e, alive = ps.filter(([, p]) => !p.cap);
+    if (e.stun > 0) e.stun -= dt;
+    else {
+      let tgt = null, best = 16;
+      for (const [, p] of alive) { const d = Math.hypot(p.x - e.x, p.z - e.z); if (d < best && (!p.hid || d < 2)) { best = d; tgt = p; } }
+      e.chase = !!tgt;
+      if (tgt) e.goal = [cell(tgt.x), cell(tgt.z)];
+      else if (cell(e.x) === e.goal[0] && cell(e.z) === e.goal[1]) e.goal = r.cells[rnd(r.cells.length)];
+      const nx = bfsNext(L, [cell(e.x), cell(e.z)], e.goal), tx = mid(nx[0]), tz = mid(nx[1]);
+      const d = Math.hypot(tx - e.x, tz - e.z) || 1, sp = (e.chase ? L.chase : 2.2) * dt;
+      e.x += (tx - e.x) / d * Math.min(sp, d); e.z += (tz - e.z) / d * Math.min(sp, d);
+      for (const [, p] of alive) if (Math.hypot(p.x - e.x, p.z - e.z) < 1.6) {
+        p.cap = true; p.hid = false; e.stun = 4;
+        const far = r.cells.filter(c => Math.hypot(mid(c[0]) - p.x, mid(c[1]) - p.z) > 20), f = far[rnd(far.length)] || r.cells[0];
+        e.x = mid(f[0]); e.z = mid(f[1]); e.goal = f; io.to(r.code).emit('captured', p.name);
+      }
+    }
+    if (ps.length && ps.every(([, p]) => p.cap)) { load(r, r.ch); io.to(r.code).emit('wipe'); continue; }
+    if (r.keys.every(Boolean) && alive.some(([, p]) => Math.hypot(p.x - mid(L.EXIT[0]), p.z - mid(L.EXIT[1])) < 3)) {
+      if (r.ch < 2) { load(r, r.ch + 1); io.to(r.code).emit('started', send(r)); }
+      else { r.started = false; io.to(r.code).emit('win'); }
+      continue;
+    }
+    io.to(r.code).emit('state', { p: Object.fromEntries(ps.map(([i, p]) => [i, { x: p.x, z: p.z, ry: p.ry, cap: p.cap, hid: p.hid, n: p.name, c: p.col }])), e: { x: e.x, z: e.z, c: e.chase }, k: r.keys });
+  }
+}, 100);
+srv.listen(process.env.PORT || 3000, () => console.log('listening'));

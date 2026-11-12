@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<title>زیرزمین شهر فرش</title>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;700&display=swap" rel="stylesheet">
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"}}</script>
+<script src="/socket.io/socket.io.js"></script>
+<style>
+*{box-sizing:border-box;-webkit-user-select:none;user-select:none;touch-action:none}
+body{margin:0;background:#000;color:#e8dcc8;font-family:Vazirmatn,Tahoma,sans-serif;overflow:hidden}
+canvas{position:fixed;inset:0;width:100%;height:100%}
+.scr{position:fixed;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;gap:12px;background:radial-gradient(#2a0a0aee,#000f);padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);z-index:5;text-align:center}
+.scr.on{display:flex}
+h1{font-size:clamp(28px,6vw,56px);color:#b3201a;text-shadow:0 0 18px #600;margin:0 0 8px}
+button,input{font:inherit;font-size:18px;padding:12px 26px;min-width:230px;background:#1b1210;color:#e8dcc8;border:1px solid #6b2a22;border-radius:6px}
+button:active{background:#6b2a22}
+input{-webkit-user-select:text;user-select:text;touch-action:auto}
+#hud{position:fixed;inset:0;pointer-events:none;z-index:2;display:none}
+#obj{position:absolute;top:calc(10px + env(safe-area-inset-top));right:14px;background:#0009;padding:8px 14px;border-radius:6px;font-size:15px}
+.bar{position:absolute;left:14px;width:140px;height:8px;background:#0008}.bar i{display:block;height:100%}
+#sub{position:absolute;bottom:18%;width:100%;text-align:center;font-size:20px;text-shadow:0 0 6px #000;padding:0 12px}
+#fade{position:fixed;inset:0;background:#000;opacity:0;pointer-events:none;z-index:3;transition:opacity .6s;display:flex;align-items:center;justify-content:center;font-size:24px}
+#touch{display:none;position:fixed;inset:0;z-index:4;pointer-events:none}
+#joy{position:absolute;left:5%;bottom:8%;width:130px;height:130px;border-radius:50%;background:#fff2;pointer-events:auto}
+#knob{position:absolute;left:35px;top:35px;width:60px;height:60px;border-radius:50%;background:#fff5}
+.tb{position:absolute;pointer-events:auto;min-width:0;width:62px;height:62px;padding:0;border-radius:50%;background:#fff3;border:1px solid #fff5;font-size:13px}
+</style></head><body>
+<div class="scr on" id="menu"><h1>زیرزمین شهر فرش</h1>
+ <button id="solo">شروع داستان</button><button id="mk">بازی چندنفره: ساخت اتاق</button>
+ <input id="code" placeholder="کد اتاق" inputmode="numeric" maxlength="4" dir="rtl"><button id="jn">ورود به بازی</button>
+ <button id="chb">ساخت شخصیت</button><button id="set">تنظیمات</button><div id="err" style="color:#e55"></div></div>
+<div class="scr" id="lobby"><h1>سالن انتظار</h1><div style="font-size:24px">کد اتاق: <b id="rc"></b></div>
+ <div id="pl"></div><button id="rd">آماده‌ام</button><button id="go">شروع بازی (میزبان)</button></div>
+<div class="scr" id="chr"><h1>ساخت شخصیت</h1><input id="pn" maxlength="16" placeholder="نام شخصیت تو"><label>رنگ لباس <input type="color" id="pc" style="min-width:60px;height:48px;padding:2px"></label><button id="cs">ذخیره و بازگشت</button></div>
+<div class="scr" id="sets"><h1>تنظیمات</h1>
+ <label>حساسیت دوربین <input type="range" id="sens" min="1" max="10" value="5"></label>
+ <label>کیفیت <select id="q" style="font:inherit;padding:8px"><option value="0">کیفیت پایین</option><option value="1" selected>کیفیت متوسط</option><option value="2">کیفیت بالا</option></select></label>
+ <label><input type="checkbox" id="inv" style="min-width:0"> معکوس کردن محور دوربین</label>
+ <p>کیبورد: WASD حرکت، Shift دویدن، E تعامل، F چراغ‌قوه، C خم شدن<br>دسته بازی: استیک‌ها حرکت/دوربین، X تعامل، LB چراغ‌قوه، RB دویدن، B خم شدن</p>
+ <button id="back">بازگشت</button></div>
+<div class="scr" id="end"><h1 id="et"></h1><button onclick="location.reload()">بازگشت به منو</button></div>
+<div id="hud"><div id="obj"></div>
+ <div class="bar" style="top:14px"><i id="st" style="background:#6a6;width:100%"></i></div>
+ <div class="bar" style="top:30px"><i id="bt" style="background:#dc6;width:100%"></i></div><div id="sub"></div></div>
+<div id="fade"></div>
+<div id="touch"><div id="joy"><div id="knob"></div></div>
+ <button class="tb" id="bS" style="right:6%;bottom:30%">دویدن</button><button class="tb" id="bC" style="right:16%;bottom:14%">خم</button>
+ <button class="tb" id="bE" style="right:5%;bottom:10%">تعامل</button><button class="tb" id="bF" style="right:16%;bottom:40%">چراغ</button></div>
+<script type="module">
+import * as THREE from 'three';
+const $ = s => document.querySelector(s), S = io(), show = id => { document.querySelectorAll('.scr').forEach(e => e.classList.toggle('on', e.id === id)); };
+const cfg = JSON.parse(localStorage.zsf || '{"sens":5,"q":1,"inv":false}');
+$('#sens').value = cfg.sens; $('#q').value = cfg.q; $('#inv').checked = cfg.inv;
+const save = () => { cfg.sens = +$('#sens').value; cfg.q = +$('#q').value; cfg.inv = $('#inv').checked; localStorage.zsf = JSON.stringify(cfg); };
+['sens', 'q', 'inv'].forEach(i => $('#' + i).onchange = save);
+cfg.name = cfg.name || ''; cfg.col = cfg.col || '#3a7acc'; $('#pn').value = cfg.name; $('#pc').value = cfg.col;
+const prof = () => ({ name: cfg.name || 'بازیکن', col: cfg.col });
+$('#chb').onclick = () => show('chr');
+$('#cs').onclick = () => { cfg.name = $('#pn').value.trim(); cfg.col = $('#pc').value; localStorage.zsf = JSON.stringify(cfg); show(lobbyInfo ? 'lobby' : 'menu'); };
+const isTouch = matchMedia('(pointer:coarse)').matches;
+let lobbyInfo = null, prev = 'menu';
+$('#set').onclick = () => { show('sets'); }; $('#back').onclick = () => show(lobbyInfo ? 'lobby' : 'menu');
+$('#solo').onclick = () => { S.emit('create', prof()); S.once('lobby', () => S.emit('start')); };
+$('#mk').onclick = () => S.emit('create', prof());
+$('#jn').onclick = () => S.emit('join', $('#code').value.trim(), prof());
+let rdy = false; $('#rd').onclick = () => { rdy = !rdy; S.emit('ready', rdy, 0); $('#rd').textContent = rdy ? 'منتظر بقیه' : 'آماده‌ام'; };
+$('#go').onclick = () => S.emit('start');
+S.on('err', m => $('#err').textContent = m);
+S.on('lobby', i => { lobbyInfo = i; if (!started) show('lobby'); $('#rc').textContent = i.code; $('#go').style.display = i.host === S.id ? '' : 'none';
+  $('#pl').innerHTML = Object.entries(i.players).map(([id, p]) => `<div><span style="color:${p.col}">●</span> ${p.name} ${p.ready ? '✔ آماده' : '…'} ${id === i.host ? '(میزبان)' : ''}</div>`).join(''); });
+// ---------- audio
+let AC; const beep = (f, d, g = .15) => { if (!AC) return; const o = AC.createOscillator(), v = AC.createGain(); o.frequency.value = f; v.gain.setValueAtTime(g, AC.currentTime); v.gain.exponentialRampToValueAtTime(.001, AC.currentTime + d); o.connect(v).connect(AC.destination); o.start(); o.stop(AC.currentTime + d); };
+// ---------- 3D
+let looping = false, started = false, W, scene, cam, ren, C = 4, M, others = {}, enemy, keyMeshes = [], lockers = [], lastState = { p: {}, e: { x: -99, z: -99 }, k: [0, 0, 0] }, flash, cap = false, hidden = false;
+const me = { x: 6, z: 6, ry: 0, pitch: 0, stam: 1, bat: 1, crouch: false, fl: true };
+const solid = (x, z) => { const r = Math.floor(z / C), c = Math.floor(x / C); return !M[r] || M[r][c] !== '.'; };
+const blocked = (x, z, r = .45) => solid(x + r, z) || solid(x - r, z) || solid(x, z + r) || solid(x, z - r);
+function say(t, ms = 3500) { $('#sub').textContent = t; clearTimeout(say.t); say.t = setTimeout(() => $('#sub').textContent = '', ms); }
+const flashFade = (t, ms) => { $('#fade').textContent = t || ''; $('#fade').style.opacity = 1; setTimeout(() => $('#fade').style.opacity = 0, ms); };
+S.on('started', d => {
+  started = true; if (ren) { ren.domElement.remove(); ren.dispose(); others = {}; } M = d.MAP; C = d.C; show(''); $('#hud').style.display = 'block'; if (isTouch) $('#touch').style.display = 'block';
+  AC = AC || new AudioContext(); if (AC.state === 'suspended') AC.resume();
+  scene = new THREE.Scene(); scene.background = new THREE.Color(d.fog); scene.fog = new THREE.FogExp2(d.fog, .09);
+  cam = new THREE.PerspectiveCamera(75, innerWidth / innerHeight, .1, 60); cam.rotation.order = 'YXZ'; scene.add(cam);
+  ren = new THREE.WebGLRenderer({ antialias: cfg.q > 0 }); ren.setPixelRatio(cfg.q == 0 ? .6 : cfg.q == 1 ? Math.min(devicePixelRatio, 1.25) : Math.min(devicePixelRatio, 2));
+  ren.setSize(innerWidth, innerHeight); document.body.prepend(ren.domElement);
+  addEventListener('resize', () => { ren.setSize(innerWidth, innerHeight); cam.aspect = innerWidth / innerHeight; cam.updateProjectionMatrix(); });
+  scene.add(new THREE.AmbientLight(d.amb, 1.2));
+  // carpet-patterned floor texture
+  const cv = document.createElement('canvas'); cv.width = cv.height = 64; const x = cv.getContext('2d'); x.fillStyle = d.floor; x.fillRect(0, 0, 64, 64); x.strokeStyle = '#c9a24a'; x.lineWidth = 3; x.strokeRect(6, 6, 52, 52); x.beginPath(); x.moveTo(32, 12); x.lineTo(52, 32); x.lineTo(32, 52); x.lineTo(12, 32); x.closePath(); x.stroke();
+  const ft = new THREE.CanvasTexture(cv); ft.wrapS = ft.wrapT = THREE.RepeatWrapping; ft.repeat.set(M[0].length * 2, M.length * 2);
+  const wm = new THREE.MeshStandardMaterial({ color: 0x4a4540, roughness: 1 }), n = M.length * C;
+  const fl = new THREE.Mesh(new THREE.PlaneGeometry(n, n), new THREE.MeshStandardMaterial({ map: ft, roughness: 1 })); fl.rotation.x = -Math.PI / 2; fl.position.set(n / 2, 0, n / 2); scene.add(fl);
+  const ce = new THREE.Mesh(new THREE.PlaneGeometry(n, n), new THREE.MeshStandardMaterial({ color: 0x222 })); ce.rotation.x = Math.PI / 2; ce.position.set(n / 2, 3.2, n / 2); scene.add(ce);
+  const wg = new THREE.BoxGeometry(C, 3.2, C);
+  M.forEach((row, r) => [...row].forEach((ch, c) => { if (ch === '#') { const m = new THREE.Mesh(wg, wm); m.position.set((c + .5) * C, 1.6, (r + .5) * C); scene.add(m); } }));
+  const mid = a => (a + .5) * C;
+  keyMeshes = d.ITEMS.map(k => { const m = new THREE.Mesh(new THREE.BoxGeometry(.5, .2, .2), new THREE.MeshBasicMaterial({ color: d.icol })); m.position.set(mid(k[0]), 1, mid(k[1])); const l = new THREE.PointLight(d.icol, 1.5, 6); m.add(l); scene.add(m); return m; });
+  lockers = d.LOCKERS.map(k => { const m = new THREE.Mesh(new THREE.BoxGeometry(1, 2.4, 1), new THREE.MeshStandardMaterial({ color: 0x3a4a3a })); m.position.set(mid(k[0]), 1.2, mid(k[1])); scene.add(m); return m; });
+  const ex = new THREE.Mesh(new THREE.BoxGeometry(2.6, 3, .3), new THREE.MeshStandardMaterial({ color: 0x888, emissive: 0x112211 })); ex.position.set(mid(d.EXIT[0]), 1.5, mid(d.EXIT[1])); scene.add(ex);
+  const el = new THREE.PointLight(0x33ff66, 2, 8); el.position.copy(ex.position); scene.add(el);
+  (d.PORTALS || []).forEach(pr => pr.forEach(c => { const m = new THREE.Mesh(new THREE.TorusGeometry(.8, .08, 8, 24), new THREE.MeshBasicMaterial({ color: 0xaa44ff })); m.position.set(mid(c[0]), 1.2, mid(c[1])); scene.add(m); const pl = new THREE.PointLight(0xaa44ff, 1.5, 6); pl.position.copy(m.position); scene.add(pl); }));
+  scene.userData.flick = new THREE.PointLight(0xff2222, 0, 12); scene.add(scene.userData.flick);
+  // tall creature
+  enemy = new THREE.Group(); const bm = new THREE.MeshStandardMaterial({ color: 0x0d0d0d });
+  const body = new THREE.Mesh(new THREE.BoxGeometry(.7, 2.6, .4), bm); body.position.y = 2; const head = new THREE.Mesh(new THREE.SphereGeometry(.28), bm); head.position.y = 3.5;
+  const eyes = new THREE.Mesh(new THREE.BoxGeometry(.3, .05, .05), new THREE.MeshBasicMaterial({ color: 0xff0000 })); eyes.position.set(0, 3.55, .25);
+  const armG = new THREE.BoxGeometry(.12, 2.4, .12); const a1 = new THREE.Mesh(armG, bm), a2 = new THREE.Mesh(armG, bm); a1.position.set(.5, 1.6, 0); a2.position.set(-.5, 1.6, 0);
+  enemy.add(body, head, eyes, a1, a2); enemy.userData.arms = [a1, a2]; scene.add(enemy);
+  flash = new THREE.SpotLight(0xfff0d0, 60, 28, .5, .5, 1.5); flash.position.set(0, 0, 0); flash.target.position.set(0, 0, -1); cam.add(flash, flash.target);
+  me.x = me.z = 6; me.bat = 1; me.stam = 1; hidden = false; cap = false; window.LV = d; lastState = { p: {}, e: { x: -99, z: -99 }, k: d.ITEMS.map(() => 0) }; $('#obj').textContent = d.obj;
+  const intro = d.intro || ['«این فرش چنده؟»', '«ما فقط ۱۰۰ ریال داریم.»', '«یه فرش کارکرده تو زیرزمین دارم. بیا پایین نشونت بدم.»', 'همه‌چیز سیاه می‌شود...'];
+  intro.forEach((t, i) => setTimeout(() => say(t, 2400), i * 2600)); flashFade(d.title || '', 2600);
+  if (!isTouch) renderer_lock(); if (!looping) { looping = true; requestAnimationFrame(loop); }
+});
+const renderer_lock = () => { document.body.addEventListener('click', () => { if (started && !document.pointerLockElement) document.body.requestPointerLock?.(); }); };
+S.on('state', s => { lastState = s; });
+S.on('say', t => say(t));
+S.on('captured', n => { say(n + ' گرفتار شد!'); beep(70, .8, .4); });
+S.on('wipe', () => { flashFade('همه گرفتار شدند... فصل از نو شروع می‌شود', 2500); me.x = me.z = 6; hidden = false; });
+S.on('win', () => { started = false; $('#hud').style.display = 'none'; $('#et').textContent = 'پایان خوب (فعلاً): فرار کردی و سه فصل اول تمام شد.'; show('end'); });
+// ---------- input
+const K = {}, T = { mx: 0, my: 0, s: false }, G = { s: false };
+addEventListener('keydown', e => { K[e.code] = 1; if (e.code === 'KeyF') me.fl = !me.fl; if (e.code === 'KeyC') me.crouch = !me.crouch; if (e.code === 'KeyE') interact(); });
+addEventListener('keyup', e => K[e.code] = 0);
+addEventListener('mousemove', e => { if (document.pointerLockElement) look(e.movementX, e.movementY, .0012); });
+const look = (dx, dy, k) => { const s = k * (cfg.sens / 5); me.ry -= dx * s; me.pitch = Math.max(-1.3, Math.min(1.3, me.pitch - dy * s * (cfg.inv ? -1 : 1))); };
+const joy = $('#joy'), knob = $('#knob'); let jid = null, lid = null, lx = 0, ly = 0;
+joy.addEventListener('touchstart', e => { jid = e.changedTouches[0].identifier; e.preventDefault(); }, { passive: false });
+addEventListener('touchmove', e => { for (const t of e.changedTouches) {
+  if (t.identifier === jid) { const r = joy.getBoundingClientRect(), dx = t.clientX - r.left - 65, dy = t.clientY - r.top - 65, d = Math.min(1, Math.hypot(dx, dy) / 55), a = Math.atan2(dy, dx); T.mx = Math.cos(a) * d; T.my = Math.sin(a) * d; knob.style.transform = `translate(${T.mx * 40}px,${T.my * 40}px)`; }
+  else if (t.identifier === lid) { look(t.clientX - lx, t.clientY - ly, .005); lx = t.clientX; ly = t.clientY; } } }, { passive: false });
+addEventListener('touchstart', e => { if (!started) return; for (const t of e.changedTouches) if (t.clientX > innerWidth / 2 && lid === null && !t.target.classList.contains('tb')) { lid = t.identifier; lx = t.clientX; ly = t.clientY; } });
+addEventListener('touchend', e => { for (const t of e.changedTouches) { if (t.identifier === jid) { jid = null; T.mx = T.my = 0; knob.style.transform = ''; } if (t.identifier === lid) lid = null; } });
+const hold = (id, f) => { const b = $(id); b.addEventListener('touchstart', e => { f(true); e.preventDefault(); }, { passive: false }); b.addEventListener('touchend', () => f(false)); };
+hold('#bS', v => T.s = v); hold('#bE', v => v && interact()); hold('#bF', v => v && (me.fl = !me.fl)); hold('#bC', v => v && (me.crouch = !me.crouch));
+let gpPrev = {}; function pad(dt) {
+  const g = [...(navigator.getGamepads?.() || [])].find(x => x); G.mx = G.my = 0; G.s = false; if (!g) return;
+  const dz = v => Math.abs(v) < .15 ? 0 : v; G.mx = dz(g.axes[0]); G.my = dz(g.axes[1]); look(dz(g.axes[2]) * 900 * dt * 1, dz(g.axes[3]) * 900 * dt, .0035);
+  G.s = g.buttons[5]?.pressed; const edge = (i, f) => { const p = g.buttons[i]?.pressed; if (p && !gpPrev[i]) f(); gpPrev[i] = p; };
+  edge(2, interact); edge(4, () => me.fl = !me.fl); edge(1, () => me.crouch = !me.crouch);
+}
+addEventListener('gamepadconnected', () => say('دسته بازی وصل شد')); addEventListener('gamepaddisconnected', () => say('دسته بازی قطع شد'));
+function interact() {
+  if (!started || cap) return; const d = (x, z) => Math.hypot(x - me.x, z - me.z);
+  if (hidden) { hidden = false; S.emit('hide', false); return; }
+  const ks = keyMeshes.findIndex((m, i) => !lastState.k[i] && d(m.position.x, m.position.z) < 3); if (ks >= 0) { S.emit('pickup', ks); beep(900, .2); return; }
+  const lk = lockers.find(m => d(m.position.x, m.position.z) < 2.2); if (lk) { hidden = true; me.x = lk.position.x; me.z = lk.position.z; S.emit('hide', true); say('در کمد پنهان شدی. با E بیرون بیا'); return; }
+  for (const [id, p] of Object.entries(lastState.p)) if (id !== S.id && p.cap && d(p.x, p.z) < 3.5) { S.emit('rescue', id); return; }
+}
+// ---------- loop
+let t0 = performance.now(), sendT = 0, hb = 0;
+function loop(t) {
+  if (!started) { looping = false; return; } requestAnimationFrame(loop); const dt = Math.min(.05, (t - t0) / 1000); t0 = t; pad(dt);
+  const mine = lastState.p[S.id]; cap = !!(mine && mine.cap); if (cap) { hidden = false; $('#fade').style.opacity = .75; $('#fade').textContent = 'گرفتار شدی... منتظر نجات همتیمی‌ها'; } else if (window._wc) { $('#fade').style.opacity = 0; $('#fade').textContent = ''; } window._wc = cap;
+  let ix = (K.KeyD ? 1 : 0) - (K.KeyA ? 1 : 0) + T.mx + (G.mx || 0), iz = (K.KeyS ? 1 : 0) - (K.KeyW ? 1 : 0) + T.my + (G.my || 0);
+  const l = Math.hypot(ix, iz); if (l > 1) { ix /= l; iz /= l; }
+  const moving = l > .1 && !cap && !hidden, sprint = (K.ShiftLeft || T.s || G.s) && moving && me.stam > .05 && !me.crouch;
+  me.stam = Math.max(0, Math.min(1, me.stam + (sprint ? -.18 : .12) * dt));
+  const sp = (me.crouch ? 1.6 : sprint ? 5.2 : 3) * dt;
+  if (moving) { const s = Math.sin(me.ry), c = Math.cos(me.ry), dx = (ix * c + iz * s) * sp, dz = (-ix * s + iz * c) * sp;
+    if (!blocked(me.x + dx, me.z)) me.x += dx; if (!blocked(me.x, me.z + dz)) me.z += dz; }
+  me.pc = Math.max(0, (me.pc || 0) - dt); if (LV.ch === 2) scene.fog.color.setHSL((t / 20000) % 1, .6, .05);
+  if (!me.pc && LV.PORTALS) for (const [a, b] of LV.PORTALS) for (const [s_, t_] of [[a, b], [b, a]]) if (Math.hypot(me.x - (s_[0] + .5) * C, me.z - (s_[1] + .5) * C) < 1) { me.x = (t_[0] + .5) * C; me.z = (t_[1] + .5) * C; me.pc = 2; flashFade('', 300); say('راهرو تو را جای دیگری برد...'); }
+  me.bat = Math.max(0, me.bat - (me.fl ? .004 : -.01) * dt); if (me.bat <= 0) me.fl = false;
+  cam.position.set(me.x, (me.crouch || hidden ? .9 : 1.6) + (moving ? Math.sin(t / 140) * .04 : 0), me.z);
+  const e = lastState.e, ed = Math.hypot(e.x - me.x, e.z - me.z), shake = ed < 10 ? (10 - ed) / 10 * .03 : 0;
+  cam.rotation.set(me.pitch + (Math.random() - .5) * shake, me.ry + (Math.random() - .5) * shake, 0);
+  const flick = (e.c && Math.random() < .25) || Math.random() < .003; flash.intensity = me.fl && !flick ? 60 : 0;
+  scene.userData.flick.intensity = e.c ? (Math.random() * 1.5) : 0; scene.userData.flick.position.set(me.x, 2.5, me.z);
+  enemy.position.x += (e.x - enemy.position.x) * .25; enemy.position.z += (e.z - enemy.position.z) * .25;
+  enemy.lookAt(e.x + (e.x - enemy.position.x) * 5, 0, e.z + (e.z - enemy.position.z) * 5 + .001); enemy.userData.arms.forEach((a, i) => a.rotation.x = Math.sin(t / (e.c ? 70 : 300) + i * 3) * .6);
+  keyMeshes.forEach((m, i) => { m.visible = !lastState.k[i]; m.rotation.y += dt * 2; });
+  for (const [id, p] of Object.entries(lastState.p)) { if (id === S.id) continue;
+    if (!others[id]) { others[id] = new THREE.Mesh(new THREE.CapsuleGeometry(.35, 1.1, 4, 8), new THREE.MeshStandardMaterial({ color: p.c || '#3a7acc', emissive: 0x111111 })); scene.add(others[id]); }
+    const o = others[id]; o.position.x += (p.x - o.position.x) * .3; o.position.z += (p.z - o.position.z) * .3; o.position.y = p.cap ? .4 : 1; o.rotation.z = p.cap ? 1.4 : 0; o.visible = !p.hid; }
+  for (const id in others) if (!lastState.p[id]) { scene.remove(others[id]); delete others[id]; }
+  hb -= dt; if (ed < 14 && hb <= 0) { beep(55, .25, .5 * (1 - ed / 14)); hb = .35 + ed / 20; }
+  if (e.c && ed < 20 && Math.random() < .03) beep(40 + Math.random() * 60, .5, .08);
+  sendT += dt; if (sendT > .066 && !cap) { sendT = 0; S.emit('move', { x: me.x, z: me.z, ry: me.ry }); }
+  $('#st').style.width = me.stam * 100 + '%'; $('#bt').style.width = me.bat * 100 + '%';
+  $('#obj').textContent = `${LV.lab}: ${lastState.k.reduce((a, b) => a + b, 0)} از ${lastState.k.length} ${lastState.k.every(Boolean) ? '— ' + LV.go : ''}`;
+  ren.render(scene, cam);
+}
+</script></body></html>
