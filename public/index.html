@@ -24,11 +24,35 @@ input{-webkit-user-select:text;user-select:text;touch-action:auto}
 #joy{position:absolute;left:5%;bottom:8%;width:130px;height:130px;border-radius:50%;background:#fff2;pointer-events:auto}
 #knob{position:absolute;left:35px;top:35px;width:60px;height:60px;border-radius:50%;background:#fff5}
 .tb{position:absolute;pointer-events:auto;min-width:0;width:62px;height:62px;padding:0;border-radius:50%;background:#fff3;border:1px solid #fff5;font-size:13px}
+
+#menu{background:radial-gradient(ellipse at 70% 0%,#8a0c0c66,transparent 45%),radial-gradient(ellipse at 50% 120%,#6a0a0a,transparent 60%),#090304;justify-content:flex-start;align-items:stretch;text-align:right;overflow-y:auto;gap:0}
+#menu.on{display:grid;grid-template-columns:1fr 1fr;grid-template-rows:auto 1fr auto;direction:ltr;padding:14px 22px}
+#menu *{touch-action:pan-y}#menu>div{direction:rtl}
+#mtop{grid-column:1/3;display:flex;justify-content:space-between;align-items:center;direction:ltr!important;font-size:14px}
+#onl{background:#0008;border:1px solid #5a1a14;padding:6px 14px;border-radius:6px;direction:rtl}#dot{display:inline-block;width:12px;height:12px;border-radius:50%;background:#e33;margin-left:6px}#dot.on{background:#3d3;box-shadow:0 0 8px #3d3}
+#mleft{display:flex;flex-direction:column;gap:8px;justify-content:center;max-width:380px}
+#menu h1{font-size:clamp(38px,6.5vw,84px);line-height:1.1;margin:0 0 14px;text-shadow:0 0 22px #a00,0 4px 0 #300}
+.mb{display:flex;align-items:center;justify-content:center;gap:12px;width:100%;min-width:0;padding:11px 16px;background:linear-gradient(#2c0808,#130405);border:1px solid #8a1a14;box-shadow:inset 0 0 12px #5008;font-size:18px;border-radius:5px}
+.mb.p{background:linear-gradient(#c8140f,#6a0806);font-size:24px;padding:14px}
+#mright{align-self:end;justify-self:end;width:min(100%,380px);display:flex;flex-direction:column;gap:8px}
+#mright h3{margin:0;color:#e33;font-size:22px;text-align:right}
+#mright input{width:100%;min-width:0;text-align:center;letter-spacing:4px}
+#mbot{grid-column:1/3;display:flex;justify-content:space-between;align-items:center;gap:10px;direction:ltr!important;flex-wrap:wrap}
+#tag{text-align:center;font-size:20px;color:#bbb}#tag b{color:#e33;font-size:26px;display:block}
+#sign{position:absolute;top:70px;right:12%;transform:rotate(-8deg);color:#b3201a;font-size:clamp(22px,4vw,48px);text-shadow:0 0 14px #800;opacity:.7;pointer-events:none;text-align:center}
+#lamp{position:absolute;top:0;left:52%;width:2px;height:60px;background:#222;pointer-events:none}#lamp:after{content:"";position:absolute;bottom:-14px;left:-22px;width:46px;height:46px;border-radius:50%;background:radial-gradient(#f33,#a00 40%,transparent 70%);animation:fl 3s infinite}
+@keyframes fl{0%,100%{opacity:1}45%{opacity:.4}50%{opacity:1}55%{opacity:.2}}
+@media(max-width:760px){#menu.on{display:flex;flex-direction:column;gap:14px}#mright{align-self:stretch;justify-self:auto;width:100%}#mleft{max-width:none}}
 </style></head><body>
-<div class="scr on" id="menu"><h1>زیرزمین شهر فرش</h1>
- <button id="solo">شروع داستان</button><button id="mk">بازی چندنفره: ساخت اتاق</button>
- <input id="code" placeholder="کد اتاق" inputmode="numeric" maxlength="4" dir="rtl"><button id="jn">ورود به بازی</button>
- <button id="chb">ساخت شخصیت</button><button id="set">تنظیمات</button><div id="err" style="color:#e55"></div></div>
+<div class="scr on" id="menu"><div id="lamp"></div><div id="sign">شهر فرش<br><small style="font-size:45%">فرش، دیروز، امروز، همیشه...</small></div>
+ <div id="mtop"><span>نسخه ۱.۰.۰</span><span id="onl"><i id="dot"></i><span id="ost">در حال اتصال...</span></span></div>
+ <div id="mleft"><h1>زیرزمین<br>شهر فرش</h1>
+  <button class="mb p" id="solo">▶ شروع داستان</button><button class="mb" id="mp">👥 بازی چندنفره</button><button class="mb" id="mk2">➕ ساخت اتاق</button>
+  <button class="mb" id="set">⚙ تنظیمات</button><button class="mb" id="ab">ℹ درباره بازی</button><button class="mb" id="ex">⏏ خروج</button></div>
+ <div id="mright"><h3>بازی چند نفره</h3><button class="mb" id="mk">➕ ساخت اتاق</button>
+  <input id="code" placeholder="کد اتاق: 1234" inputmode="numeric" maxlength="4" dir="rtl"><button class="mb" id="jn">ورود به بازی ⮜</button><div id="err" style="color:#e55"></div></div>
+ <div id="mbot"><div class="mb" style="width:auto;pointer-events:none">🎮 پشتیبانی از موبایل و دسته بازی</div><div id="tag">یک فرش ساده...<b>یک کابوس وحشتناک!</b></div><button class="mb" id="chb" style="width:auto">انتخاب شخصیت 👕</button></div></div>
+<div class="scr" id="about"><h1>درباره بازی</h1><p style="max-width:520px">زیرزمین شهر فرش یک بازی ترسناک چندنفره است. با خرید یک فرش ۱۰۰ ریالی به زیرزمینی می‌روی که راه برگشتش ساده نیست. تا چهار نفر می‌توانید با هم فرار کنید.</p><button id="ab2">بازگشت</button></div>
 <div class="scr" id="lobby"><h1>سالن انتظار</h1><div style="font-size:24px">کد اتاق: <b id="rc"></b></div>
  <div id="pl"></div><button id="rd">آماده‌ام</button><button id="go">شروع بازی (میزبان)</button></div>
 <div class="scr" id="chr"><h1>ساخت شخصیت</h1><input id="pn" maxlength="16" placeholder="نام شخصیت تو"><label>رنگ لباس <input type="color" id="pc" style="min-width:60px;height:48px;padding:2px"></label><button id="cs">ذخیره و بازگشت</button></div>
@@ -59,7 +83,12 @@ $('#chb').onclick = () => show('chr');
 $('#cs').onclick = () => { cfg.name = $('#pn').value.trim(); cfg.col = $('#pc').value; localStorage.zsf = JSON.stringify(cfg); show(lobbyInfo ? 'lobby' : 'menu'); };
 const isTouch = matchMedia('(pointer:coarse)').matches;
 let lobbyInfo = null, prev = 'menu';
-$('#set').onclick = () => { show('sets'); }; $('#back').onclick = () => show(lobbyInfo ? 'lobby' : 'menu');
+$('#set').onclick = () => { show('sets'); };
+$('#mk2').onclick = () => $('#mk').click(); $('#mp').onclick = () => $('#code').focus();
+$('#ab').onclick = () => show('about'); $('#ab2').onclick = () => show('menu');
+$('#ex').onclick = () => { window.close(); setTimeout(() => $('#err').textContent = 'برای خروج، صفحه را ببند', 200); };
+const onl = ok => { $('#dot').classList.toggle('on', ok); $('#ost').textContent = ok ? 'وضعیت: آنلاین' : 'وضعیت: آفلاین'; };
+S.on('connect', () => onl(true)); S.on('disconnect', () => onl(false)); if (S.connected) onl(true); $('#back').onclick = () => show(lobbyInfo ? 'lobby' : 'menu');
 $('#solo').onclick = () => { S.emit('create', prof()); S.once('lobby', () => S.emit('start')); };
 $('#mk').onclick = () => S.emit('create', prof());
 $('#jn').onclick = () => S.emit('join', $('#code').value.trim(), prof());
