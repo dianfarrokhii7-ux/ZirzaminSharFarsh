@@ -19,24 +19,27 @@ function gen(n, loops) { // perfect maze (always connected) + extra openings
   return m.map(r => r.join(''));
 }
 const L1 = { MAP: ["###############","#.....#.......#","#.###.#.#####.#","#.#...#.....#.#","#.#.#######.#.#","#...#.....#...#","###.#.###.#.###","#...#.#...#...#","#.###.#.###.#.#","#.....#.....#.#","#.#########.#.#","#.#.......#...#","#.#.#####.###.#","#...#...#.....#","###############"], ITEMS: [[13,1],[3,3],[1,13]], LOCKERS: [[5,5],[9,9],[3,11],[7,7]], EXIT: [13,13],
-  ch: 0, title: 'فصل ۱: انبار فرش‌های ممنوعه', fog: 0x050202, amb: '#221111', floor: '#5a1511', icol: '#ffd34a', lab: 'کلیدها', go: 'به آسانسور (نور سبز) برو', verb: 'یک کلید پیدا کرد', chase: 5.2,
-  obj: 'هدف: سه کلید را پیدا کن و به آسانسور مخفی برس', intro: ['«این فرش چنده؟»', '«ما فقط ۱۰۰ ریال داریم.»', '«یه فرش کارکرده تو زیرزمین دارم. بیا پایین نشونت بدم.»', 'همه‌چیز سیاه می‌شود...'] };
+  ch: 1, title: 'فصل ۱: انبار فرش‌های ممنوعه', fog: 0x050202, amb: '#221111', floor: '#5a1511', icol: '#ffd34a', lab: 'کلیدها', go: 'به آسانسور (نور سبز) برو', verb: 'یک کلید پیدا کرد', chase: 5.2,
+  obj: 'هدف: سه کلید را پیدا کن و به آسانسور مخفی برس', intro: ['در تاریکی بیدار می‌شوی...', 'سرت درد می‌کند و بوی فرش کهنه می‌آید.', 'باید راه خروج را پیدا کنی.'] };
+const L0 = { MAP: ["###############","#.............#","#.............#","#.............#","#.............#","#.............#","#.............#","######...######","#.............#","#.............#","#.............#","#.............#","#.............#","#.............#","###############"], ITEMS: [[7,3]], LOCKERS: [], EXIT: [13,1], SP: [7,12], ch: 0, noEnemy: true,
+  title: 'پیش‌درآمد: شهر فرش', fog: 0x070b14, amb: '#445577', floor: '#6a3a22', icol: '#ffd34a', lab: 'گفت‌وگو', go: 'از پله‌های زیرزمین (نور قرمز) پایین برو', verb: 'با فروشنده صحبت کرد', chase: 0,
+  obj: 'هدف: وارد مغازهٔ شهر فرش شو و با فروشنده صحبت کن', intro: ['شب است. جلوی مغازهٔ «شهر فرش» ایستاده‌ای.', 'با ۱۰۰ ریال آمده‌ای فرش بخری...', 'وارد مغازه شو.'] };
 function pickCells(L, k) {
   const cs = []; L.MAP.forEach((row, r) => [...row].forEach((ch, c) => ch === '.' && c + r > 8 && !(c === L.EXIT[0] && r === L.EXIT[1]) && cs.push([c, r])));
   for (let i = cs.length - 1; i > 0; i--) { const j = rnd(i + 1);[cs[i], cs[j]] = [cs[j], cs[i]]; }
   return cs.splice(0, k);
 }
 function level(ch) {
-  if (ch === 0) return L1;
-  const n = ch === 1 ? 15 : 17;
-  const L = { MAP: gen(n, ch === 1 ? 14 : 8), EXIT: [n - 2, n - 2], ch };
-  if (ch === 1) Object.assign(L, { title: 'فصل ۲: آزمایشگاه اکسیر جوانی', fog: 0x020a04, amb: '#113322', floor: '#2f5a44', icol: '#66ff88', lab: 'کارت‌ها و دستگاه‌ها', go: 'به در خروج آزمایشگاه (نور سبز) برو', verb: 'یکی از اهداف آزمایشگاه را انجام داد', chase: 5.6,
+  if (ch === 0) return L0; if (ch === 1) return L1;
+  const n = ch === 2 ? 15 : 17;
+  const L = { MAP: gen(n, ch === 2 ? 14 : 8), EXIT: [n - 2, n - 2], ch };
+  if (ch === 2) Object.assign(L, { title: 'فصل ۲: آزمایشگاه اکسیر جوانی', fog: 0x020a04, amb: '#113322', floor: '#2f5a44', icol: '#66ff88', lab: 'کارت‌ها و دستگاه‌ها', go: 'به در خروج آزمایشگاه (نور سبز) برو', verb: 'یکی از اهداف آزمایشگاه را انجام داد', chase: 5.6,
     obj: 'هدف: کارت‌های دسترسی را بردار و دستگاه‌های آزمایشگاه را خاموش کن', intro: ['«این‌جا آزمایشگاه اکسیر جوانی است...»', 'بطری‌های سبز روی میزها می‌درخشند.', 'باید دستگاه‌ها را خاموش کنی و بگریزی.'] });
   else Object.assign(L, { title: 'فصل ۳: راهروهای بی‌پایان', fog: 0x0a0205, amb: '#331133', floor: '#33224a', icol: '#cc88ff', lab: 'نشانه‌های خروج', go: 'خروج واقعی را پیدا کن (نور سبز)', verb: 'یک نشانهٔ خروج پیدا کرد', chase: 5.9,
     obj: 'هدف: راهروها عوض می‌شوند؛ حلقه‌های بنفش تو را جابه‌جا می‌کنند. سه نشانه را پیدا کن و خروج واقعی را بیاب', intro: ['اتاق‌ها تکرار می‌شوند...', 'راهروها همان‌طور که یادت بود نیستند.', 'خروج واقعی جایی این‌جاست.'] });
-  const nI = ch === 1 ? 4 : 3, cs = pickCells(L, nI + 4 + 6);
+  const nI = ch === 2 ? 4 : 3, cs = pickCells(L, nI + 4 + 6);
   L.ITEMS = cs.splice(0, nI); L.LOCKERS = cs.splice(0, 4);
-  if (ch === 2) L.PORTALS = [[cs[0], cs[1]], [cs[2], cs[3]], [cs[4], cs[5]]];
+  if (ch === 3) L.PORTALS = [[cs[0], cs[1]], [cs[2], cs[3]], [cs[4], cs[5]]];
   return L;
 }
 const rooms = Object.create(null);
@@ -55,9 +58,9 @@ function load(r, ch) {
   r.keys = L.ITEMS.map(() => 0);
   const f = r.cells.filter(c => c[0] + c[1] > 12)[0] || r.cells[r.cells.length - 1];
   r.e = { x: mid(f[0]), z: mid(f[1]), goal: f, stun: 0, chase: false };
-  Object.values(r.players).forEach(p => Object.assign(p, { x: mid(1), z: mid(1), cap: false, hid: false }));
+  Object.values(r.players).forEach(p => Object.assign(p, { x: mid((L.SP || [1, 1])[0]), z: mid((L.SP || [1, 1])[1]), cap: false, hid: false }));
 }
-const send = r => ({ ...r.L, C, SPAWN: [1, 1] });
+const send = r => ({ ...r.L, C, SP: r.L.SP || [1, 1] });
 const pub = r => ({ code: r.code, host: r.host, started: r.started, players: Object.fromEntries(Object.entries(r.players).map(([i, p]) => [i, { name: p.name, ready: p.ready, col: p.col }])) });
 io.on('connection', s => {
   let R = null;
@@ -94,7 +97,8 @@ setInterval(() => {
   for (const r of Object.values(rooms)) {
     if (!r.started) continue;
     const L = r.L, ps = Object.entries(r.players), e = r.e, alive = ps.filter(([, p]) => !p.cap);
-    if (e.stun > 0) e.stun -= dt;
+    if (L.noEnemy) { e.x = e.z = -99; e.chase = false; }
+    else if (e.stun > 0) e.stun -= dt;
     else {
       let tgt = null, best = 16;
       for (const [, p] of alive) { const d = Math.hypot(p.x - e.x, p.z - e.z); if (d < best && (!p.hid || d < 2)) { best = d; tgt = p; } }
@@ -112,7 +116,7 @@ setInterval(() => {
     }
     if (ps.length && ps.every(([, p]) => p.cap)) { load(r, r.ch); io.to(r.code).emit('wipe'); continue; }
     if (r.keys.every(Boolean) && alive.some(([, p]) => Math.hypot(p.x - mid(L.EXIT[0]), p.z - mid(L.EXIT[1])) < 3)) {
-      if (r.ch < 2) { load(r, r.ch + 1); io.to(r.code).emit('started', send(r)); }
+      if (r.ch < 3) { load(r, r.ch + 1); io.to(r.code).emit('started', send(r)); }
       else { r.started = false; io.to(r.code).emit('win'); }
       continue;
     }
