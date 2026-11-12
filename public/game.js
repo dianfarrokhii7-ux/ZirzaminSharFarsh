@@ -113,9 +113,9 @@ S.on('started', d => {
   enemy.add(body, head, eyes, a1, a2); enemy.userData.arms = [a1, a2]; scene.add(enemy);
   flash = new THREE.SpotLight(0xfff0d0, 60, 28, .5, .5, 1.5); flash.position.set(0, 0, 0); flash.castShadow = cfg.q > 0; flash.shadow.mapSize.set(cfg.q > 1 ? 1024 : 512, cfg.q > 1 ? 1024 : 512);
   dust = null; if (cfg.q > 0) { const N = 220, g = new THREE.BufferGeometry(), a = new Float32Array(N * 3); for (let i = 0; i < N * 3; i++) a[i] = (Math.random() - .5) * 16; g.setAttribute('position', new THREE.BufferAttribute(a, 3)); dust = new THREE.Points(g, new THREE.PointsMaterial({ color: 0xcfc3a0, size: .05, transparent: true, opacity: .5 })); scene.add(dust); } flash.target.position.set(0, 0, -1); cam.add(flash, flash.target);
-  me.x = (d.SP[0] + .5) * C; me.z = (d.SP[1] + .5) * C; me.bat = 1; me.stam = 1; hidden = false; cap = false; window.LV = d; lastState = { p: {}, e: { x: -99, z: -99 }, k: d.ITEMS.map(() => 0) }; $('#obj').textContent = d.obj;
+  me.x = (d.SP[0] + .5) * C; me.z = (d.SP[1] + .5) * C; me.bat = 1; me.stam = 1; me.fl = true; hidden = false; cap = false; window.LV = d; lastState = { p: {}, e: { x: -99, z: -99 }, k: d.ITEMS.map(() => 0) }; $('#obj').textContent = d.obj;
   const intro = d.intro || ['«این فرش چنده؟»', '«ما فقط ۱۰۰ ریال داریم.»', '«یه فرش کارکرده تو زیرزمین دارم. بیا پایین نشونت بدم.»', 'همه‌چیز سیاه می‌شود...'];
-  intro.forEach((t, i) => setTimeout(() => say(t, 2400), i * 2600)); if (prevCh === 0 && d.ch === 1) { beep(55, 1.4, .5); flashFade('ناگهان دو نفر از پشت تو را می‌گیرند...', 3200); } else flashFade(d.title || '', 2600);
+  intro.forEach((t, i) => setTimeout(() => say(t, 2400), i * 2600)); if (prevCh === 0 && d.ch === 1) { beep(55, 1.4, .5); flashFade('ناگهان رامبد جوان با دست‌های بزرگش تو را می‌گیرد... عمو پورنگ: «بالاخره یکی دیگه برای آزمایش پیدا شد!» ... در آهنی بسته می‌شود.', 4500); } else flashFade(d.title || '', 2600);
   if (!isTouch) renderer_lock(); if (!looping) { looping = true; requestAnimationFrame(loop); }
 });
 const renderer_lock = () => { document.body.addEventListener('click', () => { if (started && !document.pointerLockElement) document.body.requestPointerLock?.(); }); };
@@ -123,7 +123,19 @@ S.on('state', s => { lastState = s; });
 S.on('say', t => say(t));
 S.on('captured', n => { say(n + ' گرفتار شد!'); beep(70, .8, .4); });
 S.on('wipe', () => { flashFade('همه گرفتار شدند... فصل از نو شروع می‌شود', 2500); me.x = me.z = 6; hidden = false; });
-S.on('win', () => { started = false; $('#hud').style.display = 'none'; $('#et').textContent = 'پایان فصل ۷: از فرش نفرین‌شده فرار کردی... اما ماجرا تمام نشده است. فصل‌های ۸ و ۹ در مرحلهٔ بعد.'; show('end'); });
+S.on('win', () => { started = false; beep(60, 2, .5); flashFade('آسانسور حرکت می‌کند... چراغ‌ها خاموش می‌شوند. «یه لحظه صبر کن...»', 3200);
+  setTimeout(() => { $('#hud').style.display = 'none'; $('#et').innerHTML = 'چراغ روشن می‌شود... عمو پورنگ داخل آسانسور ایستاده است.<br><br>📺 تلویزیون قدیمی روشن می‌شود. پژمان جمشیدی: «حالا دیگه وقتشه حقیقت رو بدونی...»<br><br>ادامه دارد...'; show('end'); }, 3400); });
+const jump = (face, msg, snd = 70) => { const f = $('#fade'); f.style.transition = 'none'; f.style.opacity = 1; f.style.fontSize = '30vmin'; f.textContent = face; beep(snd, .6, .5);
+  setTimeout(() => { f.style.opacity = 0; f.textContent = ''; f.style.fontSize = ''; f.style.transition = ''; if (msg) say(msg, 4000); }, 450); };
+const EV = {
+  rug: () => { jump('😱', 'چراغ‌قوه خاموش شد... وقتی روشن شد، چیزی نبود.'); me.fl = false; setTimeout(() => me.fl = true, 2500); },
+  room: () => { beep(45, 1, .6); say('در پشت سرت بسته شد... رامبد جوان انتهای اتاق ایستاده است! چراغ‌ها خاموش می‌شوند — فرار کن!', 5000); me.fl = false; setTimeout(() => me.fl = true, 1500); },
+  steps: () => { say('صدای قدم‌های خودت را می‌شنوی... ولی تو ایستاده‌ای.', 4000); [1, 1.6, 2.2, 2.8].forEach(t => setTimeout(() => beep(90, .12, .3), t * 1000)); },
+  mirror: w => { if (w !== S.id) return; say('در آینهٔ قدیمی، رامبد جوان پشت سرت است...', 2500); setTimeout(() => say('برمی‌گردی؛ هیچ‌کس نیست. دوباره نگاه می‌کنی؛ او نزدیک‌تر شده!', 2500), 2600); setTimeout(() => jump('🪞', 'آینه ترک خورد.', 90), 5400); },
+  chair: () => { say('صندلی آزمایش... چراغ‌ها خاموش می‌شوند. عمو پورنگ: «بشین... فقط یه آزمایش کوچیکه.»', 4500); me.fl = false; setTimeout(() => { me.fl = true; jump('🟢', ''); }, 3500); },
+  lock: () => { say('درها قفل شدند! «کجا می‌ری؟ هنوز آزمایشمون تموم نشده!»', 4500); beep(50, 1, .5); }
+};
+S.on('ev', ({ id, who }) => EV[id]?.(who));
 // ---------- input
 const K = {}, T = { mx: 0, my: 0, s: false }, G = { s: false };
 addEventListener('keydown', e => { K[e.code] = 1; if (e.code === 'KeyF') me.fl = !me.fl; if (e.code === 'KeyC') me.crouch = !me.crouch; if (e.code === 'KeyE') interact(); });
@@ -166,7 +178,7 @@ function interact() {
 // ---------- loop
 let t0 = performance.now(), sendT = 0, hb = 0;
 function loop(t) {
-  if (!started) { looping = false; return; } requestAnimationFrame(loop); const dt = Math.min(.05, (t - t0) / 1000); t0 = t; pad(dt);
+  if (!started) { looping = false; return; } requestAnimationFrame(loop); const dt = Math.min(.05, (t - t0) / 1000); t0 = t; pad(dt); const hasFl = !LV.needFl || lastState.k[0];
   const mine = lastState.p[S.id]; cap = !!(mine && mine.cap); if (cap) { hidden = false; $('#fade').style.opacity = .75; $('#fade').textContent = 'گرفتار شدی... منتظر نجات همتیمی‌ها'; } else if (window._wc) { $('#fade').style.opacity = 0; $('#fade').textContent = ''; } window._wc = cap;
   let ix = (K.KeyD ? 1 : 0) - (K.KeyA ? 1 : 0) + T.mx + (G.mx || 0), iz = (K.KeyS ? 1 : 0) - (K.KeyW ? 1 : 0) + T.my + (G.my || 0);
   const l = Math.hypot(ix, iz); if (l > 1) { ix /= l; iz /= l; }
@@ -181,15 +193,15 @@ function loop(t) {
   if (LV.dlg && lastState.k[0] && !LV.talked) { LV.talked = 1; LV.dlg.forEach((l, i) => setTimeout(() => say(l, 2800), i * 3000)); }
   if (LV.npc && window.npc) window.npc.rotation.y = Math.atan2(me.x - window.npc.position.x, me.z - window.npc.position.z);
   if (LV.ch === 0 && window.owner) { const ow = window.owner;
-    if (lastState.k[0] && !LV.talked) { LV.talked = 1; ['تو: «این فرش چنده؟»', 'فروشنده: «این؟ خیلی بیشتر از پول تو می‌شه...»', 'تو: «ما فقط ۱۰۰ ریال داریم.»', 'فروشنده: «یه فرش کارکرده تو زیرزمین دارم. بیا پایین نشونت بدم.»', 'دنبالش برو...'].forEach((l, i) => setTimeout(() => say(l, 2800), i * 3000)); setTimeout(() => LV.walk = 1, 12000); }
+    if (lastState.k[0] && !LV.talked) { LV.talked = 1; ['تو: «سلام، یه فرش می‌خواستم. چنده؟»', 'پژمان جمشیدی: «این فرش ۵۰۰ هزار ریاله.»', 'تو: «ما فقط ۱۰۰ ریال داریم.»', 'پژمان جمشیدی: «با ۱۰۰ ریال؟! 😂 ولی یه فرش کارکرده تو زیرزمین دارم. بیا پایین نشونت بدم.»', 'پژمان جمشیدی: «فقط مراقب باش... پایین یه کم تاریکه.»'].forEach((l, i) => setTimeout(() => say(l, 2800), i * 3000)); setTimeout(() => LV.walk = 1, 12000); }
     const dx = 54 - ow.position.x, dz = 6 - ow.position.z, dd = Math.hypot(dx, dz), wk = LV.walk && dd > .4;
     if (wk) { ow.position.x += dx / dd * 2 * dt; ow.position.z += dz / dd * 2 * dt; ow.rotation.y = Math.atan2(dx, dz); }
     ow.userData.l.forEach((l, i) => l.rotation.x = wk ? Math.sin(t / 200 + i * Math.PI) * .6 : 0); }
-  me.bat = Math.max(0, me.bat - (me.fl ? .004 : -.01) * dt); if (me.bat <= 0) me.fl = false;
+  me.bat = Math.max(0, me.bat - (me.fl && hasFl ? .004 : -.01) * dt); if (me.bat <= 0) me.fl = false;
   cam.position.set(me.x, (me.crouch || hidden ? .9 : 1.6) - (LV.ch === 0 ? Math.max(0, 9 - Math.hypot(me.x - 54, me.z - 6)) / 9 * .8 : 0) + (moving ? Math.sin(t / 140) * .04 : 0), me.z);
   const e = lastState.e, ed = Math.hypot(e.x - me.x, e.z - me.z), shake = ed < 10 ? (10 - ed) / 10 * .03 : 0;
   cam.rotation.set(me.pitch + (Math.random() - .5) * shake, me.ry + (Math.random() - .5) * shake, LV.distort ? Math.sin(t / 900) * .06 : 0);
-  const flick = (e.c && Math.random() < .25) || Math.random() < .003; flash.intensity = me.fl && !flick ? 60 : 0;
+  const flick = (e.c && Math.random() < .25) || Math.random() < .003; flash.intensity = me.fl && hasFl && !flick ? 60 : 0;
   scene.userData.flick.intensity = e.c ? (Math.random() * 1.5) : 0; scene.userData.flick.position.set(me.x, 2.5, me.z);
   enemy.position.x += (e.x - enemy.position.x) * .25; enemy.position.z += (e.z - enemy.position.z) * .25;
   enemy.lookAt(e.x + (e.x - enemy.position.x) * 5, 0, e.z + (e.z - enemy.position.z) * 5 + .001); enemy.userData.arms.forEach((a, i) => a.rotation.x = Math.sin(t / (e.c ? 70 : 300) + i * 3) * .6);

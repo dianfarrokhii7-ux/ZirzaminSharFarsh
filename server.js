@@ -18,7 +18,7 @@ function bfsNext(L, a, b) {
 function load(r, ch) {
   r.ch = ch; const L = r.L = level(ch);
   r.cells = []; L.MAP.forEach((row, y) => [...row].forEach((c, x) => c === '.' && r.cells.push([x, y])));
-  r.keys = L.ITEMS.map(() => 0);
+  r.keys = L.ITEMS.map(() => 0); r.fired = {};
   const f = r.cells.filter(c => c[0] + c[1] > 12)[0] || r.cells[r.cells.length - 1];
   r.e = { x: mid(f[0]), z: mid(f[1]), goal: f, stun: 0, chase: false };
   Object.values(r.players).forEach(p => Object.assign(p, { x: mid((L.SP || [1, 1])[0]), z: mid((L.SP || [1, 1])[1]), cap: false, hid: false }));
@@ -77,9 +77,12 @@ setInterval(() => {
         e.x = mid(f[0]); e.z = mid(f[1]); e.goal = f; io.to(r.code).emit('captured', p.name);
       }
     }
+    for (const t of L.TRG || []) { const w = !r.fired[t.id] && alive.find(([, p]) => Math.hypot(p.x - mid(t.cell[0]), p.z - mid(t.cell[1])) < 3); if (!w) continue;
+      r.fired[t.id] = 1; io.to(r.code).emit('ev', { id: t.id, who: w[0] });
+      if (t.rush && !L.noEnemy) { const f = r.cells.filter(c => { const d = Math.hypot(mid(c[0]) - w[1].x, mid(c[1]) - w[1].z); return d > 9 && d < 15; }), g = f[rnd(f.length)] || r.cells[0]; e.x = mid(g[0]); e.z = mid(g[1]); e.goal = [cell(w[1].x), cell(w[1].z)]; e.stun = 0; } }
     if (ps.length && ps.every(([, p]) => p.cap)) { load(r, r.ch); io.to(r.code).emit('wipe'); continue; }
     if (r.keys.every(Boolean) && alive.some(([, p]) => Math.hypot(p.x - mid(L.EXIT[0]), p.z - mid(L.EXIT[1])) < 3)) {
-      if (r.ch < 7) { load(r, r.ch + 1); io.to(r.code).emit('started', send(r)); }
+      if (r.ch < 3) { load(r, r.ch + 1); io.to(r.code).emit('started', send(r)); }
       else { r.started = false; io.to(r.code).emit('win'); }
       continue;
     }
