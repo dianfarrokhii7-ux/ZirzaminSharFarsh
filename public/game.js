@@ -115,24 +115,37 @@ S.on('started', d => {
   dust = null; if (cfg.q > 0) { const N = 220, g = new THREE.BufferGeometry(), a = new Float32Array(N * 3); for (let i = 0; i < N * 3; i++) a[i] = (Math.random() - .5) * 16; g.setAttribute('position', new THREE.BufferAttribute(a, 3)); dust = new THREE.Points(g, new THREE.PointsMaterial({ color: 0xcfc3a0, size: .05, transparent: true, opacity: .5 })); scene.add(dust); } flash.target.position.set(0, 0, -1); cam.add(flash, flash.target);
   me.x = (d.SP[0] + .5) * C; me.z = (d.SP[1] + .5) * C; me.bat = 1; me.stam = 1; me.fl = true; hidden = false; cap = false; window.LV = d; lastState = { p: {}, e: { x: -99, z: -99 }, k: d.ITEMS.map(() => 0) }; $('#obj').textContent = d.obj;
   const intro = d.intro || ['«این فرش چنده؟»', '«ما فقط ۱۰۰ ریال داریم.»', '«یه فرش کارکرده تو زیرزمین دارم. بیا پایین نشونت بدم.»', 'همه‌چیز سیاه می‌شود...'];
-  intro.forEach((t, i) => setTimeout(() => say(t, 2400), i * 2600)); if (prevCh === 0 && d.ch === 1) { beep(55, 1.4, .5); flashFade('ناگهان رامبد جوان با دست‌های بزرگش تو را می‌گیرد... عمو پورنگ: «بالاخره یکی دیگه برای آزمایش پیدا شد!» ... در آهنی بسته می‌شود.', 4500); } else flashFade(d.title || '', 2600);
+  intro.forEach((t, i) => setTimeout(() => say(t, 2400), i * 2600)); if (prevCh === 0 && d.ch === 1) { beep(55, 1.4, .5); flashFade('ناگهان قدبلند با دست‌های بزرگش تو را می‌گیرد... عمو اکسیر: «بالاخره یکی دیگه برای آزمایش پیدا شد!» ... در آهنی بسته می‌شود.', 4500); } else flashFade(d.title || '', 2600);
   if (!isTouch) renderer_lock(); if (!looping) { looping = true; requestAnimationFrame(loop); }
 });
 const renderer_lock = () => { document.body.addEventListener('click', () => { if (started && !document.pointerLockElement) document.body.requestPointerLock?.(); }); };
 S.on('state', s => { lastState = s; });
 S.on('say', t => say(t));
-S.on('captured', n => { say(n + ' گرفتار شد!'); beep(70, .8, .4); });
+function scream() {
+  const lab = LV.ch === 3, sk = lab ? '#a8d8a0' : '#cfc6b8', gl = lab ? '#3f3' : '#f11', o = document.createElement('div');
+  o.style.cssText = 'position:fixed;inset:0;z-index:99999;background:#000;display:flex;align-items:center;justify-content:center;overflow:hidden;pointer-events:none';
+  o.innerHTML = `<style>@keyframes zm{0%{transform:scale(.15) rotate(-6deg)}15%{transform:scale(1.5) rotate(4deg)}100%{transform:scale(2.3) rotate(-3deg)}}@keyframes sh{0%,100%{translate:0 0}25%{translate:-30px 18px}50%{translate:26px -22px}75%{translate:-18px -26px}}@keyframes bl{0%,60%{background:#000}30%,80%{background:#900}}</style>
+  <svg viewBox="0 0 300 400" style="height:120vh;animation:zm 1.4s ease-out forwards,sh .08s linear infinite"><ellipse cx="150" cy="190" rx="95" ry="165" fill="${sk}"/><ellipse cx="108" cy="150" rx="30" ry="42" fill="#000"/><ellipse cx="192" cy="150" rx="30" ry="42" fill="#000"/><circle cx="108" cy="156" r="9" fill="${gl}"/><circle cx="192" cy="156" r="9" fill="${gl}"/>
+  <path d="M60 255 Q150 215 240 255 L225 360 Q150 420 75 360Z" fill="#100"/><path d="M75 262 L90 310 L105 258 L120 318 L135 255 L150 322 L165 255 L180 318 L195 258 L210 310 L225 262" fill="none" stroke="#eee" stroke-width="9"/><path d="M108 108 L90 60 M192 108 L214 58" stroke="#000" stroke-width="7"/></svg>
+  <div style="position:absolute;inset:0;animation:bl .25s steps(1) infinite;mix-blend-mode:multiply;opacity:.6"></div>`;
+  document.body.appendChild(o);
+  if (AC) { const n = AC.sampleRate * 1.6, b = AC.createBuffer(1, n, AC.sampleRate), d = b.getChannelData(0); for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / n);
+    const s = AC.createBufferSource(), gn = AC.createGain(), ws = AC.createWaveShaper(); gn.gain.value = 1.2; s.buffer = b; s.connect(ws).connect(gn).connect(AC.destination); s.start();
+    [900, 1350, 60].forEach((f, k) => { const q = AC.createOscillator(), h = AC.createGain(); q.type = 'sawtooth'; q.frequency.setValueAtTime(f, AC.currentTime); q.frequency.exponentialRampToValueAtTime(f * (k < 2 ? .3 : 2), AC.currentTime + 1.4); h.gain.setValueAtTime(.35, AC.currentTime); h.gain.exponentialRampToValueAtTime(.001, AC.currentTime + 1.5); q.connect(h).connect(AC.destination); q.start(); q.stop(AC.currentTime + 1.5); }); }
+  navigator.vibrate?.([200, 60, 300]); setTimeout(() => o.remove(), 1800);
+}
+S.on('captured', (n, id) => { say(n + ' گرفتار شد!'); if (id === S.id) scream(); else beep(70, .8, .4); });
 S.on('wipe', () => { flashFade('همه گرفتار شدند... فصل از نو شروع می‌شود', 2500); me.x = me.z = 6; hidden = false; });
 S.on('win', () => { started = false; beep(60, 2, .5); flashFade('آسانسور حرکت می‌کند... چراغ‌ها خاموش می‌شوند. «یه لحظه صبر کن...»', 3200);
-  setTimeout(() => { $('#hud').style.display = 'none'; $('#et').innerHTML = 'چراغ روشن می‌شود... عمو پورنگ داخل آسانسور ایستاده است.<br><br>📺 تلویزیون قدیمی روشن می‌شود. پژمان جمشیدی: «حالا دیگه وقتشه حقیقت رو بدونی...»<br><br>ادامه دارد...'; show('end'); }, 3400); });
+  setTimeout(() => { $('#hud').style.display = 'none'; $('#et').innerHTML = 'چراغ روشن می‌شود... عمو اکسیر داخل آسانسور ایستاده است.<br><br>📺 تلویزیون قدیمی روشن می‌شود. فروشنده: «حالا دیگه وقتشه حقیقت رو بدونی...»<br><br>ادامه دارد...'; show('end'); }, 3400); });
 const jump = (face, msg, snd = 70) => { const f = $('#fade'); f.style.transition = 'none'; f.style.opacity = 1; f.style.fontSize = '30vmin'; f.textContent = face; beep(snd, .6, .5);
   setTimeout(() => { f.style.opacity = 0; f.textContent = ''; f.style.fontSize = ''; f.style.transition = ''; if (msg) say(msg, 4000); }, 450); };
 const EV = {
   rug: () => { jump('😱', 'چراغ‌قوه خاموش شد... وقتی روشن شد، چیزی نبود.'); me.fl = false; setTimeout(() => me.fl = true, 2500); },
-  room: () => { beep(45, 1, .6); say('در پشت سرت بسته شد... رامبد جوان انتهای اتاق ایستاده است! چراغ‌ها خاموش می‌شوند — فرار کن!', 5000); me.fl = false; setTimeout(() => me.fl = true, 1500); },
+  room: () => { beep(45, 1, .6); say('در پشت سرت بسته شد... قدبلند انتهای اتاق ایستاده است! چراغ‌ها خاموش می‌شوند — فرار کن!', 5000); me.fl = false; setTimeout(() => me.fl = true, 1500); },
   steps: () => { say('صدای قدم‌های خودت را می‌شنوی... ولی تو ایستاده‌ای.', 4000); [1, 1.6, 2.2, 2.8].forEach(t => setTimeout(() => beep(90, .12, .3), t * 1000)); },
-  mirror: w => { if (w !== S.id) return; say('در آینهٔ قدیمی، رامبد جوان پشت سرت است...', 2500); setTimeout(() => say('برمی‌گردی؛ هیچ‌کس نیست. دوباره نگاه می‌کنی؛ او نزدیک‌تر شده!', 2500), 2600); setTimeout(() => jump('🪞', 'آینه ترک خورد.', 90), 5400); },
-  chair: () => { say('صندلی آزمایش... چراغ‌ها خاموش می‌شوند. عمو پورنگ: «بشین... فقط یه آزمایش کوچیکه.»', 4500); me.fl = false; setTimeout(() => { me.fl = true; jump('🟢', ''); }, 3500); },
+  mirror: w => { if (w !== S.id) return; say('در آینهٔ قدیمی، قدبلند پشت سرت است...', 2500); setTimeout(() => say('برمی‌گردی؛ هیچ‌کس نیست. دوباره نگاه می‌کنی؛ او نزدیک‌تر شده!', 2500), 2600); setTimeout(() => jump('🪞', 'آینه ترک خورد.', 90), 5400); },
+  chair: () => { say('صندلی آزمایش... چراغ‌ها خاموش می‌شوند. عمو اکسیر: «بشین... فقط یه آزمایش کوچیکه.»', 4500); me.fl = false; setTimeout(() => { me.fl = true; jump('🟢', ''); }, 3500); },
   lock: () => { say('درها قفل شدند! «کجا می‌ری؟ هنوز آزمایشمون تموم نشده!»', 4500); beep(50, 1, .5); }
 };
 S.on('ev', ({ id, who }) => EV[id]?.(who));
@@ -171,12 +184,12 @@ addEventListener('gamepadconnected', () => say('دسته بازی وصل شد'))
 function interact() {
   if (!started || cap) return; const d = (x, z) => Math.hypot(x - me.x, z - me.z);
   if (hidden) { hidden = false; S.emit('hide', false); return; }
-  const ks = keyMeshes.findIndex((m, i) => !lastState.k[i] && d(m.position.x, m.position.z) < 3); if (ks >= 0) { S.emit('pickup', ks); beep(900, .2); return; }
+  const ks = keyMeshes.findIndex((m, i) => !lastState.k[i] && d(m.position.x, m.position.z) < 3.8); if (ks >= 0) { S.emit('pickup', ks); beep(900, .2); return; }
   const lk = lockers.find(m => d(m.position.x, m.position.z) < 2.2); if (lk) { hidden = true; me.x = lk.position.x; me.z = lk.position.z; S.emit('hide', true); say('در کمد پنهان شدی. با E بیرون بیا'); return; }
   for (const [id, p] of Object.entries(lastState.p)) if (id !== S.id && p.cap && d(p.x, p.z) < 3.5) { S.emit('rescue', id); return; }
 }
 // ---------- loop
-let t0 = performance.now(), sendT = 0, hb = 0;
+let t0 = performance.now(), sendT = 0, hb = 0, pk = 0;
 function loop(t) {
   if (!started) { looping = false; return; } requestAnimationFrame(loop); const dt = Math.min(.05, (t - t0) / 1000); t0 = t; pad(dt); const hasFl = !LV.needFl || lastState.k[0];
   const mine = lastState.p[S.id]; cap = !!(mine && mine.cap); if (cap) { hidden = false; $('#fade').style.opacity = .75; $('#fade').textContent = 'گرفتار شدی... منتظر نجات همتیمی‌ها'; } else if (window._wc) { $('#fade').style.opacity = 0; $('#fade').textContent = ''; } window._wc = cap;
@@ -187,13 +200,13 @@ function loop(t) {
   const sp = (me.crouch ? 1.6 : sprint ? 5.2 : 3) * dt;
   if (moving) { const s = Math.sin(me.ry), c = Math.cos(me.ry), dx = (ix * c + iz * s) * sp, dz = (-ix * s + iz * c) * sp;
     if (!blocked(me.x + dx, me.z)) me.x += dx; if (!blocked(me.x, me.z + dz)) me.z += dz; }
-  me.pc = Math.max(0, (me.pc || 0) - dt); if (LV.ch === 3 || LV.distort) scene.fog.color.setHSL((t / 20000) % 1, .6, .05);
+  me.pc = Math.max(0, (me.pc || 0) - dt); if (LV.ch === 2 || LV.distort) scene.fog.color.setHSL((t / 20000) % 1, .6, .05);
   if (!me.pc && LV.PORTALS) for (const [a, b] of LV.PORTALS) for (const [s_, t_] of [[a, b], [b, a]]) if (Math.hypot(me.x - (s_[0] + .5) * C, me.z - (s_[1] + .5) * C) < 1) { me.x = (t_[0] + .5) * C; me.z = (t_[1] + .5) * C; me.pc = 2; flashFade('', 300); say('راهرو تو را جای دیگری برد...'); }
   if (dust) { dust.position.set(me.x, 1.5, me.z); const pa = dust.geometry.attributes.position; for (let i = 1; i < pa.array.length; i += 3) { pa.array[i] -= dt * .05; if (pa.array[i] < -2) pa.array[i] = 6; } pa.needsUpdate = true; }
   if (LV.dlg && lastState.k[0] && !LV.talked) { LV.talked = 1; LV.dlg.forEach((l, i) => setTimeout(() => say(l, 2800), i * 3000)); }
   if (LV.npc && window.npc) window.npc.rotation.y = Math.atan2(me.x - window.npc.position.x, me.z - window.npc.position.z);
   if (LV.ch === 0 && window.owner) { const ow = window.owner;
-    if (lastState.k[0] && !LV.talked) { LV.talked = 1; ['تو: «سلام، یه فرش می‌خواستم. چنده؟»', 'پژمان جمشیدی: «این فرش ۵۰۰ هزار ریاله.»', 'تو: «ما فقط ۱۰۰ ریال داریم.»', 'پژمان جمشیدی: «با ۱۰۰ ریال؟! 😂 ولی یه فرش کارکرده تو زیرزمین دارم. بیا پایین نشونت بدم.»', 'پژمان جمشیدی: «فقط مراقب باش... پایین یه کم تاریکه.»'].forEach((l, i) => setTimeout(() => say(l, 2800), i * 3000)); setTimeout(() => LV.walk = 1, 12000); }
+    if (lastState.k[0] && !LV.talked) { LV.talked = 1; ['تو: «سلام، یه فرش می‌خواستم. چنده؟»', 'فروشنده: «این فرش ۵۰۰ هزار ریاله.»', 'تو: «ما فقط ۱۰۰ ریال داریم.»', 'فروشنده: «با ۱۰۰ ریال؟! 😂 ولی یه فرش کارکرده تو زیرزمین دارم. بیا پایین نشونت بدم.»', 'فروشنده: «فقط مراقب باش... پایین یه کم تاریکه.»'].forEach((l, i) => setTimeout(() => say(l, 2800), i * 3000)); setTimeout(() => LV.walk = 1, 12000); }
     const dx = 54 - ow.position.x, dz = 6 - ow.position.z, dd = Math.hypot(dx, dz), wk = LV.walk && dd > .4;
     if (wk) { ow.position.x += dx / dd * 2 * dt; ow.position.z += dz / dd * 2 * dt; ow.rotation.y = Math.atan2(dx, dz); }
     ow.userData.l.forEach((l, i) => l.rotation.x = wk ? Math.sin(t / 200 + i * Math.PI) * .6 : 0); }
@@ -211,6 +224,7 @@ function loop(t) {
       { const cv = document.createElement('canvas'); cv.width = 256; cv.height = 64; const cx = cv.getContext('2d'); cx.font = 'bold 34px Vazirmatn, Tahoma'; cx.textAlign = 'center'; cx.fillStyle = '#fff'; cx.shadowColor = '#000'; cx.shadowBlur = 6; cx.fillText(p.n || '', 128, 44); const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(cv), transparent: true, depthTest: false })); sp.scale.set(1.6, .4, 1); sp.position.y = 2.35; others[id].add(sp); } }
     const o = others[id], mv = Math.hypot(p.x - o.position.x, p.z - o.position.z) > .05; o.position.x += (p.x - o.position.x) * .3; o.position.z += (p.z - o.position.z) * .3; o.position.y = p.cap ? .3 : 0; o.rotation.z = p.cap ? 1.4 : 0; o.rotation.y = p.ry + Math.PI; o.userData.l.forEach((l, i) => l.rotation.x = mv ? Math.sin(t / 150 + i * Math.PI) * .6 : 0); o.userData.a.forEach((l, i) => l.rotation.x = mv ? -Math.sin(t / 150 + i * Math.PI) * .5 : 0); o.visible = !p.hid; }
   for (const id in others) if (!lastState.p[id]) { scene.remove(others[id]); delete others[id]; }
+  pk -= dt; if (pk <= 0 && !cap && !hidden && LV.ch > 0) { pk = .3; keyMeshes.forEach((m, i) => { if (!lastState.k[i] && Math.hypot(m.position.x - me.x, m.position.z - me.z) < 2.2) { S.emit('pickup', i); beep(900, .2); } }); }
   hb -= dt; if (ed < 14 && hb <= 0) { beep(55, .25, .5 * (1 - ed / 14)); hb = .35 + ed / 20; }
   if (e.c && ed < 20 && Math.random() < .03) beep(40 + Math.random() * 60, .5, .08);
   sendT += dt; if (sendT > .066 && !cap) { sendT = 0; S.emit('move', { x: me.x, z: me.z, ry: me.ry }); }

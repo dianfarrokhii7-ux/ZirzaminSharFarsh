@@ -43,7 +43,7 @@ io.on('connection', s => {
   s.on('pickup', i => {
     const q = R && R.players[s.id]; if (!q || q.cap || !R.L.ITEMS[i] || R.keys[i]) return;
     const it = R.L.ITEMS[i];
-    if (Math.hypot(q.x - mid(it[0]), q.z - mid(it[1])) < 3.5) { R.keys[i] = 1; const mg = R.L.msgs && R.L.msgs[i]; io.to(R.code).emit('say', mg ? mg.replace('{n}', q.name) : q.name + ' ' + R.L.verb); }
+    if (Math.hypot(q.x - mid(it[0]), q.z - mid(it[1])) < 4.5) { R.keys[i] = 1; const mg = R.L.msgs && R.L.msgs[i]; io.to(R.code).emit('say', mg ? mg.replace('{n}', q.name) : q.name + ' ' + R.L.verb); }
   });
   s.on('rescue', id => {
     const a = R && R.players[s.id], b = R && R.players[id];
@@ -71,10 +71,10 @@ setInterval(() => {
       const nx = bfsNext(L, [cell(e.x), cell(e.z)], e.goal), tx = mid(nx[0]), tz = mid(nx[1]);
       const d = Math.hypot(tx - e.x, tz - e.z) || 1, sp = (e.chase ? L.chase : 2.2) * dt;
       e.x += (tx - e.x) / d * Math.min(sp, d); e.z += (tz - e.z) / d * Math.min(sp, d);
-      for (const [, p] of alive) if (Math.hypot(p.x - e.x, p.z - e.z) < 1.6) {
+      for (const [pid, p] of alive) if (Math.hypot(p.x - e.x, p.z - e.z) < 1.6) {
         p.cap = true; p.hid = false; e.stun = 4;
         const far = r.cells.filter(c => Math.hypot(mid(c[0]) - p.x, mid(c[1]) - p.z) > 20), f = far[rnd(far.length)] || r.cells[0];
-        e.x = mid(f[0]); e.z = mid(f[1]); e.goal = f; io.to(r.code).emit('captured', p.name);
+        e.x = mid(f[0]); e.z = mid(f[1]); e.goal = f; io.to(r.code).emit('captured', p.name, pid);
       }
     }
     for (const t of L.TRG || []) { const w = !r.fired[t.id] && alive.find(([, p]) => Math.hypot(p.x - mid(t.cell[0]), p.z - mid(t.cell[1])) < 3); if (!w) continue;
