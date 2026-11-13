@@ -7,6 +7,16 @@ const save = () => { cfg.sens = +$('#sens').value; cfg.q = +$('#q').value; cfg.i
 ['sens', 'q', 'inv'].forEach(i => $('#' + i).onchange = save);
 cfg.name = cfg.name || ''; cfg.col = cfg.col || '#3a7acc'; $('#pn').value = cfg.name; $('#pc').value = cfg.col;
 const prof = () => ({ name: cfg.name || 'بازیکن', col: cfg.col });
+$('#hsSolo').onclick = () => $('#solo').click();
+$('#hsMulti').onclick = () => $('#mp').click();
+$('#hsCreate').onclick = () => $('#mk2').click();
+$('#hsSettings').onclick = () => $('#set').click();
+$('#hsAbout').onclick = () => $('#ab').click();
+$('#hsExit').onclick = () => $('#ex').click();
+$('#hsRoomCreate').onclick = () => $('#mk').click();
+$('#hsJoin').onclick = () => { $('#code').value = $('#hsCode').value.trim(); $('#jn').click(); };
+$('#hsCode').addEventListener('input', () => { $('#code').value = $('#hsCode').value.replace(/\\D/g,'').slice(0,4); });
+$('#hsCharacter').onclick = () => $('#chb').click();
 $('#chb').onclick = () => show('chr');
 $('#cs').onclick = () => { cfg.name = $('#pn').value.trim(); cfg.col = $('#pc').value; localStorage.zsf = JSON.stringify(cfg); show(lobbyInfo ? 'lobby' : 'menu'); };
 const isTouch = matchMedia('(pointer:coarse)').matches;
@@ -115,7 +125,7 @@ S.on('started', d => {
   dust = null; if (cfg.q > 0) { const N = 220, g = new THREE.BufferGeometry(), a = new Float32Array(N * 3); for (let i = 0; i < N * 3; i++) a[i] = (Math.random() - .5) * 16; g.setAttribute('position', new THREE.BufferAttribute(a, 3)); dust = new THREE.Points(g, new THREE.PointsMaterial({ color: 0xcfc3a0, size: .05, transparent: true, opacity: .5 })); scene.add(dust); } flash.target.position.set(0, 0, -1); cam.add(flash, flash.target);
   me.x = (d.SP[0] + .5) * C; me.z = (d.SP[1] + .5) * C; me.bat = 1; me.stam = 1; me.fl = true; hidden = false; cap = false; window.LV = d; lastState = { p: {}, e: { x: -99, z: -99 }, k: d.ITEMS.map(() => 0) }; $('#obj').textContent = d.obj;
   const intro = d.intro || ['«این فرش چنده؟»', '«ما فقط ۱۰۰ ریال داریم.»', '«یه فرش کارکرده تو زیرزمین دارم. بیا پایین نشونت بدم.»', 'همه‌چیز سیاه می‌شود...'];
-  intro.forEach((t, i) => setTimeout(() => say(t, 2400), i * 2600)); if (prevCh === 0 && d.ch === 1) { beep(55, 1.4, .5); flashFade('ناگهان قدبلند با دست‌های بزرگش تو را می‌گیرد... عمو اکسیر: «بالاخره یکی دیگه برای آزمایش پیدا شد!» ... در آهنی بسته می‌شود.', 4500); } else flashFade(d.title || '', 2600);
+  intro.forEach((t, i) => setTimeout(() => say(t, 2400), i * 2600)); if (prevCh === 0 && d.ch === 1) { beep(55, 1.4, .5); flashFade('ناگهان رامبد جوان با دست‌های بزرگش تو را می‌گیرد... عمو پورنگ: «بالاخره یکی دیگه برای آزمایش پیدا شد!» ... در آهنی بسته می‌شود.', 4500); } else flashFade(d.title || '', 2600);
   if (!isTouch) renderer_lock(); if (!looping) { looping = true; requestAnimationFrame(loop); }
 });
 const renderer_lock = () => { document.body.addEventListener('click', () => { if (started && !document.pointerLockElement) document.body.requestPointerLock?.(); }); };
@@ -137,15 +147,15 @@ function scream() {
 S.on('captured', (n, id) => { say(n + ' گرفتار شد!'); if (id === S.id) scream(); else beep(70, .8, .4); });
 S.on('wipe', () => { flashFade('همه گرفتار شدند... فصل از نو شروع می‌شود', 2500); me.x = me.z = 6; hidden = false; });
 S.on('win', () => { started = false; beep(60, 2, .5); flashFade('آسانسور حرکت می‌کند... چراغ‌ها خاموش می‌شوند. «یه لحظه صبر کن...»', 3200);
-  setTimeout(() => { $('#hud').style.display = 'none'; $('#et').innerHTML = 'چراغ روشن می‌شود... عمو اکسیر داخل آسانسور ایستاده است.<br><br>📺 تلویزیون قدیمی روشن می‌شود. فروشنده: «حالا دیگه وقتشه حقیقت رو بدونی...»<br><br>ادامه دارد...'; show('end'); }, 3400); });
+  setTimeout(() => { $('#hud').style.display = 'none'; $('#et').innerHTML = 'چراغ روشن می‌شود... عمو پورنگ داخل آسانسور ایستاده است.<br><br>📺 تلویزیون قدیمی روشن می‌شود. پژمان جمشیدی: «حالا دیگه وقتشه حقیقت رو بدونی...»<br><br>ادامه دارد...'; show('end'); }, 3400); });
 const jump = (face, msg, snd = 70) => { const f = $('#fade'); f.style.transition = 'none'; f.style.opacity = 1; f.style.fontSize = '30vmin'; f.textContent = face; beep(snd, .6, .5);
   setTimeout(() => { f.style.opacity = 0; f.textContent = ''; f.style.fontSize = ''; f.style.transition = ''; if (msg) say(msg, 4000); }, 450); };
 const EV = {
   rug: () => { jump('😱', 'چراغ‌قوه خاموش شد... وقتی روشن شد، چیزی نبود.'); me.fl = false; setTimeout(() => me.fl = true, 2500); },
-  room: () => { beep(45, 1, .6); say('در پشت سرت بسته شد... قدبلند انتهای اتاق ایستاده است! چراغ‌ها خاموش می‌شوند — فرار کن!', 5000); me.fl = false; setTimeout(() => me.fl = true, 1500); },
+  room: () => { beep(45, 1, .6); say('در پشت سرت بسته شد... رامبد جوان انتهای اتاق ایستاده است! چراغ‌ها خاموش می‌شوند — فرار کن!', 5000); me.fl = false; setTimeout(() => me.fl = true, 1500); },
   steps: () => { say('صدای قدم‌های خودت را می‌شنوی... ولی تو ایستاده‌ای.', 4000); [1, 1.6, 2.2, 2.8].forEach(t => setTimeout(() => beep(90, .12, .3), t * 1000)); },
-  mirror: w => { if (w !== S.id) return; say('در آینهٔ قدیمی، قدبلند پشت سرت است...', 2500); setTimeout(() => say('برمی‌گردی؛ هیچ‌کس نیست. دوباره نگاه می‌کنی؛ او نزدیک‌تر شده!', 2500), 2600); setTimeout(() => jump('🪞', 'آینه ترک خورد.', 90), 5400); },
-  chair: () => { say('صندلی آزمایش... چراغ‌ها خاموش می‌شوند. عمو اکسیر: «بشین... فقط یه آزمایش کوچیکه.»', 4500); me.fl = false; setTimeout(() => { me.fl = true; jump('🟢', ''); }, 3500); },
+  mirror: w => { if (w !== S.id) return; say('در آینهٔ قدیمی، رامبد جوان پشت سرت است...', 2500); setTimeout(() => say('برمی‌گردی؛ هیچ‌کس نیست. دوباره نگاه می‌کنی؛ او نزدیک‌تر شده!', 2500), 2600); setTimeout(() => jump('🪞', 'آینه ترک خورد.', 90), 5400); },
+  chair: () => { say('صندلی آزمایش... چراغ‌ها خاموش می‌شوند. عمو پورنگ: «بشین... فقط یه آزمایش کوچیکه.»', 4500); me.fl = false; setTimeout(() => { me.fl = true; jump('🟢', ''); }, 3500); },
   lock: () => { say('درها قفل شدند! «کجا می‌ری؟ هنوز آزمایشمون تموم نشده!»', 4500); beep(50, 1, .5); }
 };
 S.on('ev', ({ id, who }) => EV[id]?.(who));
@@ -206,7 +216,7 @@ function loop(t) {
   if (LV.dlg && lastState.k[0] && !LV.talked) { LV.talked = 1; LV.dlg.forEach((l, i) => setTimeout(() => say(l, 2800), i * 3000)); }
   if (LV.npc && window.npc) window.npc.rotation.y = Math.atan2(me.x - window.npc.position.x, me.z - window.npc.position.z);
   if (LV.ch === 0 && window.owner) { const ow = window.owner;
-    if (lastState.k[0] && !LV.talked) { LV.talked = 1; ['تو: «سلام، یه فرش می‌خواستم. چنده؟»', 'فروشنده: «این فرش ۵۰۰ هزار ریاله.»', 'تو: «ما فقط ۱۰۰ ریال داریم.»', 'فروشنده: «با ۱۰۰ ریال؟! 😂 ولی یه فرش کارکرده تو زیرزمین دارم. بیا پایین نشونت بدم.»', 'فروشنده: «فقط مراقب باش... پایین یه کم تاریکه.»'].forEach((l, i) => setTimeout(() => say(l, 2800), i * 3000)); setTimeout(() => LV.walk = 1, 12000); }
+    if (lastState.k[0] && !LV.talked) { LV.talked = 1; ['تو: «سلام، یه فرش می‌خواستم. چنده؟»', 'پژمان جمشیدی: «این فرش ۵۰۰ هزار ریاله.»', 'تو: «ما فقط ۱۰۰ ریال داریم.»', 'پژمان جمشیدی: «با ۱۰۰ ریال؟! 😂 ولی یه فرش کارکرده تو زیرزمین دارم. بیا پایین نشونت بدم.»', 'پژمان جمشیدی: «فقط مراقب باش... پایین یه کم تاریکه.»'].forEach((l, i) => setTimeout(() => say(l, 2800), i * 3000)); setTimeout(() => LV.walk = 1, 12000); }
     const dx = 54 - ow.position.x, dz = 6 - ow.position.z, dd = Math.hypot(dx, dz), wk = LV.walk && dd > .4;
     if (wk) { ow.position.x += dx / dd * 2 * dt; ow.position.z += dz / dd * 2 * dt; ow.rotation.y = Math.atan2(dx, dz); }
     ow.userData.l.forEach((l, i) => l.rotation.x = wk ? Math.sin(t / 200 + i * Math.PI) * .6 : 0); }

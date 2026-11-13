@@ -40,3 +40,22 @@ input{-webkit-user-select:text;user-select:text;touch-action:auto}
 #mtop,#mleft,#mright,#mbot{position:relative;z-index:1}
 @media(max-width:760px){#chars{left:0;width:100%;height:40%;opacity:.5}}
 #vig{position:absolute;inset:0;background:radial-gradient(ellipse at center,transparent 45%,#000c 100%)}
+
+/* Exact supplied main-menu artwork with functional transparent hit areas */
+#menu.on{display:block!important;position:fixed;inset:0;padding:0!important;overflow:hidden;background:#000!important}
+#menu> :not(#menuArt){display:none!important}
+#menuArt{position:absolute;width:min(100vw,177.683vh);height:min(100vh,56.28vw);left:50%;top:50%;transform:translate(-50%,-50%);direction:ltr!important;background:url('/menu-reference.png') center/100% 100% no-repeat}
+#menuArt .hotspot,#menuArt input{position:absolute;display:block;min-width:0;margin:0;padding:0;border:0;border-radius:0;background:transparent;box-shadow:none;color:transparent;outline:none;cursor:pointer;touch-action:manipulation}
+#menuArt .hotspot:focus-visible,#menuArt input:focus-visible{outline:2px solid transparent}
+#hsSolo{left:7.8%;top:55.3%;width:24.5%;height:7.6%}
+#hsMulti{left:7.8%;top:63.5%;width:24.5%;height:5.8%}
+#hsCreate{left:7.8%;top:69.4%;width:24.5%;height:5.8%}
+#hsSettings{left:7.8%;top:75.3%;width:24.5%;height:5.8%}
+#hsAbout{left:7.8%;top:80.8%;width:24.5%;height:5.8%}
+#hsExit{left:7.8%;top:86.8%;width:24.5%;height:5.8%}
+#hsRoomCreate{left:73.5%;top:51.5%;width:22.5%;height:6.5%}
+#hsCode{left:86.4%;top:58.7%;width:8.7%;height:5.5%;font:700 clamp(12px,2vw,28px) Vazirmatn,Tahoma,sans-serif!important;text-align:center;letter-spacing:2px;background:rgba(35,22,22,.82)!important;color:#eee!important;border:1px solid #6b302c!important;border-radius:5px!important;padding:0!important}
+#hsCode::placeholder{color:transparent}
+#hsJoin{left:73.5%;top:65.9%;width:22.5%;height:6.5%}
+#hsCharacter{left:75%;top:83.7%;width:20.5%;height:7.5%}
+@media(max-aspect-ratio:1/1){#menuArt{width:min(100vw,177.683vh);height:min(100vh,56.28vw)}}

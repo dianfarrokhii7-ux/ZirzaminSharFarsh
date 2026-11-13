@@ -7,7 +7,19 @@
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"}}</script>
 <script src="/socket.io/socket.io.js"></script>
 <link rel="stylesheet" href="/style.css"></head><body>
-<div class="scr on" id="menu"><svg id="chars" viewBox="0 0 600 400" preserveAspectRatio="xMidYMax meet" aria-hidden="true"><defs><filter id="gl"><feGaussianBlur stdDeviation="6"/></filter></defs>
+<div class="scr on" id="menu">
+ <div id="menuArt" aria-label="منوی اصلی">
+  <button class="hotspot" id="hsSolo" aria-label="شروع داستان"></button>
+  <button class="hotspot" id="hsMulti" aria-label="بازی چند نفره"></button>
+  <button class="hotspot" id="hsCreate" aria-label="ساخت اتاق"></button>
+  <button class="hotspot" id="hsSettings" aria-label="تنظیمات"></button>
+  <button class="hotspot" id="hsAbout" aria-label="درباره بازی"></button>
+  <button class="hotspot" id="hsExit" aria-label="خروج"></button>
+  <button class="hotspot" id="hsRoomCreate" aria-label="ساخت اتاق چندنفره"></button>
+  <input id="hsCode" aria-label="کد اتاق" placeholder="" maxlength="4" inputmode="numeric" dir="ltr">
+  <button class="hotspot" id="hsJoin" aria-label="ورود به بازی"></button>
+  <button class="hotspot" id="hsCharacter" aria-label="انتخاب شخصیت"></button>
+ </div><svg id="chars" viewBox="0 0 600 400" preserveAspectRatio="xMidYMax meet" aria-hidden="true"><defs><filter id="gl"><feGaussianBlur stdDeviation="6"/></filter></defs>
 <g fill="#14050700" stroke="#a5180f" stroke-width="2" style="fill:#120406">
 <circle cx="130" cy="95" r="28"/><path d="M92 125 L168 125 L160 400 L100 400Z"/><path d="M96 130 L66 340 M164 130 L196 345" stroke-width="12" stroke-linecap="round" fill="none"/>
 <circle cx="300" cy="105" r="36"/><path d="M218 400 L230 172 Q300 140 370 172 L382 400Z"/><path d="M262 150 L338 150" stroke="#6a0806" stroke-width="10"/>
