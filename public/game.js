@@ -40,7 +40,7 @@ let AC; const beep = (f, d, g = .15) => { if (!AC) return; const o = AC.createOs
 // ---------- 3D
 let dust, looping = false, started = false, W, scene, cam, ren, C = 4, M, others = {}, enemy, keyMeshes = [], lockers = [], lastState = { p: {}, e: { x: -99, z: -99 }, k: [0, 0, 0] }, flash, cap = false, hidden = false;
 const me = { x: 6, z: 6, ry: 0, pitch: 0, stam: 1, bat: 1, crouch: false, fl: true };
-const solid = (x, z) => { const r = Math.floor(z / C), c = Math.floor(x / C); return !M[r] || M[r][c] !== '.'; };
+const solid = (x, z) => { const r = Math.floor(z / C), c = Math.floor(x / C); return !M[r] || M[r][c] !== '.' || closed.has(r * 100 + c); };
 const blocked = (x, z, r = .45) => solid(x + r, z) || solid(x - r, z) || solid(x, z + r) || solid(x, z - r);
 function say(t, ms = 3500) { $('#sub').textContent = t; clearTimeout(say.t); say.t = setTimeout(() => $('#sub').textContent = '', ms); }
 const flashFade = (t, ms) => { $('#fade').textContent = t || ''; $('#fade').style.opacity = 1; setTimeout(() => $('#fade').style.opacity = 0, ms); };
@@ -88,31 +88,31 @@ function prologue(d) { // carpet shop at night: street, sign, shop interior, sta
   const sl = new THREE.PointLight(0xff2020, 2, 9); sl.position.set(54, .6, 6); scene.add(sl);
   if (d.ch === 0) { window.owner = mkHuman(0x1b1b1f, { beard: 0x8a8a8a, hair: 0x9a9a9a }); owner.position.set(30, 0, 14.3); scene.add(owner); } }
 S.on('started', d => {
-  const prevCh = window.LV ? window.LV.ch : -1; started = true; if (ren) { ren.domElement.remove(); ren.dispose(); others = {}; } M = d.MAP; C = d.C; show(''); $('#hud').style.display = 'block'; if (isTouch) $('#touch').style.display = 'block';
+  const prevCh = window.LV ? window.LV.ch : -1; started = true; FX.length = 0; closed = new Set(); doorMeshes = {}; stopAmb(); { const cu = document.getElementById('cut'); if (cu) { cu.style.opacity = 0; setTimeout(() => cu.remove(), 900); } } if (ren) { ren.domElement.remove(); ren.dispose(); others = {}; } M = d.MAP; C = d.C; show(''); $('#hud').style.display = 'block'; if (isTouch) $('#touch').style.display = 'block';
   AC = AC || new AudioContext(); if (AC.state === 'suspended') AC.resume();
-  scene = new THREE.Scene(); scene.background = new THREE.Color(d.fog); scene.fog = new THREE.FogExp2(d.fog, .09);
+  scene = new THREE.Scene(); scene.background = new THREE.Color(d.fog); scene.fog = new THREE.FogExp2(d.fog, d.fogD || .09);
   cam = new THREE.PerspectiveCamera(75, innerWidth / innerHeight, .1, 60); cam.rotation.order = 'YXZ'; scene.add(cam);
   ren = new THREE.WebGLRenderer({ antialias: cfg.q > 0 }); ren.setPixelRatio(cfg.q == 0 ? .6 : cfg.q == 1 ? Math.min(devicePixelRatio, 1.25) : Math.min(devicePixelRatio, 2));
   ren.setSize(innerWidth, innerHeight); ren.shadowMap.enabled = cfg.q > 0; ren.toneMapping = THREE.ACESFilmicToneMapping; ren.toneMappingExposure = 1.15; document.body.prepend(ren.domElement);
   addEventListener('resize', () => { ren.setSize(innerWidth, innerHeight); cam.aspect = innerWidth / innerHeight; cam.updateProjectionMatrix(); });
-  scene.add(new THREE.AmbientLight(d.amb, 1.2));
+  scene.userData.amb = new THREE.AmbientLight(d.amb, 1.2); scene.add(scene.userData.amb);
   // carpet-patterned floor texture
   const cv = document.createElement('canvas'); cv.width = cv.height = 64; const x = cv.getContext('2d'); x.fillStyle = d.floor; x.fillRect(0, 0, 64, 64); x.strokeStyle = '#c9a24a'; x.lineWidth = 3; x.strokeRect(6, 6, 52, 52); x.beginPath(); x.moveTo(32, 12); x.lineTo(52, 32); x.lineTo(32, 52); x.lineTo(12, 32); x.closePath(); x.stroke();
   for (let i = 0; i < 900; i++) { x.fillStyle = 'rgba(0,0,0,' + Math.random() * .3 + ')'; x.fillRect(Math.random() * 64, Math.random() * 64, 1, 1); }
   const ft = new THREE.CanvasTexture(cv); ft.wrapS = ft.wrapT = THREE.RepeatWrapping; ft.repeat.set(M[0].length * 2, M.length * 2);
-  const wt = tex('#6b665f', 14, 1), wm = new THREE.MeshStandardMaterial({ map: wt, bumpMap: wt, bumpScale: 1.5, roughness: .95 }), n = M.length * C;
+  const wt = tex(d.wall || '#6b665f', 14, 1), wm = new THREE.MeshStandardMaterial({ map: wt, bumpMap: wt, bumpScale: 1.5, roughness: .95 }), n = M.length * C;
   const fl = new THREE.Mesh(new THREE.PlaneGeometry(n, n), new THREE.MeshStandardMaterial({ map: ft, bumpMap: ft, bumpScale: .6, roughness: .9 })); fl.rotation.x = -Math.PI / 2; fl.receiveShadow = true; fl.position.set(n / 2, 0, n / 2); scene.add(fl);
   const ce = new THREE.Mesh(new THREE.PlaneGeometry(n, n), new THREE.MeshStandardMaterial({ color: 0x222 })); ce.rotation.x = Math.PI / 2; ce.position.set(n / 2, 3.2, n / 2); scene.add(ce); scene.userData.ce = ce;
   const wg = new THREE.BoxGeometry(C, 3.2, C);
   M.forEach((row, r) => [...row].forEach((ch, c) => { if (ch === '#') { const m = new THREE.Mesh(wg, wm); m.position.set((c + .5) * C, 1.6, (r + .5) * C); m.castShadow = m.receiveShadow = true; scene.add(m); } }));
   const mid = a => (a + .5) * C;
-  keyMeshes = d.ITEMS.map(k => { const m = new THREE.Mesh(new THREE.BoxGeometry(.5, .2, .2), new THREE.MeshBasicMaterial({ color: d.icol })); m.position.set(mid(k[0]), 1, mid(k[1])); const l = new THREE.PointLight(d.icol, 1.5, 6); m.add(l); scene.add(m); return m; });
+  keyMeshes = d.ITEMS.map((k, i) => { const ic = d.ICOL?.[i] || d.icol, m = new THREE.Mesh(new THREE.BoxGeometry(.5, .2, .2), new THREE.MeshBasicMaterial({ color: ic })); if (d.ISC?.[i]) m.scale.set(...d.ISC[i]); m.position.set(mid(k[0]), 1, mid(k[1])); const l = new THREE.PointLight(ic, 1.5, 6); m.add(l); scene.add(m); return m; });
   if (d.ch === 0) keyMeshes.forEach(m => m.position.set(30, 2.8, 14));
   if (d.npc) { keyMeshes[0].position.y = 2.8; window.npc = mkHuman(0x1b1b1f, { beard: 0x8a8a8a, hair: 0x9a9a9a }); window.npc.position.set(keyMeshes[0].position.x, 0, keyMeshes[0].position.z); scene.add(window.npc); }
   lockers = d.LOCKERS.map(k => { const m = new THREE.Mesh(new THREE.BoxGeometry(1, 2.4, 1), new THREE.MeshStandardMaterial({ color: 0x3a4a3a })); m.position.set(mid(k[0]), 1.2, mid(k[1])); scene.add(m); return m; });
   const ex = new THREE.Mesh(new THREE.BoxGeometry(2.6, 3, .3), new THREE.MeshStandardMaterial({ color: 0x888, emissive: 0x112211 })); ex.position.set(mid(d.EXIT[0]), 1.5, mid(d.EXIT[1])); scene.add(ex);
-  const el = new THREE.PointLight(0x33ff66, 2, 8); el.position.copy(ex.position); scene.add(el);
-  if (d.shop) prologue(d);
+  const el = new THREE.PointLight(0x33ff66, 2, 8); el.position.copy(ex.position); scene.add(el); scene.userData.ex = ex; scene.userData.el = el; if (d.ch >= 5) ex.material.color.setHex(d.ch === 6 ? 0x4a3322 : 0x5a6066);
+  if (d.shop) prologue(d); if (d.ch >= 4) decor(d);
   (d.PORTALS || []).forEach(pr => pr.forEach(c => { const m = new THREE.Mesh(new THREE.TorusGeometry(.8, .08, 8, 24), new THREE.MeshBasicMaterial({ color: 0xaa44ff })); m.position.set(mid(c[0]), 1.2, mid(c[1])); scene.add(m); const pl = new THREE.PointLight(0xaa44ff, 1.5, 6); pl.position.copy(m.position); scene.add(pl); }));
   scene.userData.flick = new THREE.PointLight(0xff2222, 0, 12); scene.add(scene.userData.flick);
   // tall creature
@@ -125,11 +125,11 @@ S.on('started', d => {
   dust = null; if (cfg.q > 0) { const N = 220, g = new THREE.BufferGeometry(), a = new Float32Array(N * 3); for (let i = 0; i < N * 3; i++) a[i] = (Math.random() - .5) * 16; g.setAttribute('position', new THREE.BufferAttribute(a, 3)); dust = new THREE.Points(g, new THREE.PointsMaterial({ color: 0xcfc3a0, size: .05, transparent: true, opacity: .5 })); scene.add(dust); } flash.target.position.set(0, 0, -1); cam.add(flash, flash.target);
   me.x = (d.SP[0] + .5) * C; me.z = (d.SP[1] + .5) * C; me.bat = 1; me.stam = 1; me.fl = true; hidden = false; cap = false; window.LV = d; lastState = { p: {}, e: { x: -99, z: -99 }, k: d.ITEMS.map(() => 0) }; $('#obj').textContent = d.obj;
   const intro = d.intro || ['«این فرش چنده؟»', '«ما فقط ۱۰۰ ریال داریم.»', '«یه فرش کارکرده تو زیرزمین دارم. بیا پایین نشونت بدم.»', 'همه‌چیز سیاه می‌شود...'];
-  intro.forEach((t, i) => setTimeout(() => say(t, 2400), i * 2600)); if (prevCh === 0 && d.ch === 1) { beep(55, 1.4, .5); flashFade('ناگهان رامبد جوان با دست‌های بزرگش تو را می‌گیرد... عمو پورنگ: «بالاخره یکی دیگه برای آزمایش پیدا شد!» ... در آهنی بسته می‌شود.', 4500); } else flashFade(d.title || '', 2600);
-  if (!isTouch) renderer_lock(); if (!looping) { looping = true; requestAnimationFrame(loop); }
+  if (!d.retry) intro.forEach((t, i) => setTimeout(() => say(t, 2400), i * 2600)); if (prevCh === 0 && d.ch === 1) { beep(55, 1.4, .5); flashFade('ناگهان رامبد جوان با دست‌های بزرگش تو را می‌گیرد... عمو پورنگ: «بالاخره یکی دیگه برای آزمایش پیدا شد!» ... در آهنی بسته می‌شود.', 4500); } else flashFade(d.retry ? 'همه گرفتار شدند... فصل از نو شروع می‌شود' : (d.title || ''), 2600);
+  if (d.ch >= 4) startAmb(d); resetX(); if (!isTouch) renderer_lock(); if (!looping) { looping = true; requestAnimationFrame(loop); }
 });
 const renderer_lock = () => { document.body.addEventListener('click', () => { if (started && !document.pointerLockElement) document.body.requestPointerLock?.(); }); };
-S.on('state', s => { lastState = s; });
+S.on('state', s => { lastState = s; closed = new Set((s.d || []).map(([c, r]) => r * 100 + c)); });
 S.on('say', t => say(t));
 function scream() {
   const lab = LV.ch === 3, sk = lab ? '#a8d8a0' : '#cfc6b8', gl = lab ? '#3f3' : '#f11', o = document.createElement('div');
@@ -146,8 +146,7 @@ function scream() {
 }
 S.on('captured', (n, id) => { say(n + ' گرفتار شد!'); if (id === S.id) scream(); else beep(70, .8, .4); });
 S.on('wipe', () => { flashFade('همه گرفتار شدند... فصل از نو شروع می‌شود', 2500); me.x = me.z = 6; hidden = false; });
-S.on('win', () => { started = false; beep(60, 2, .5); flashFade('آسانسور حرکت می‌کند... چراغ‌ها خاموش می‌شوند. «یه لحظه صبر کن...»', 3200);
-  setTimeout(() => { $('#hud').style.display = 'none'; $('#et').innerHTML = 'چراغ روشن می‌شود... عمو پورنگ داخل آسانسور ایستاده است.<br><br>📺 تلویزیون قدیمی روشن می‌شود. پژمان جمشیدی: «حالا دیگه وقتشه حقیقت رو بدونی...»<br><br>ادامه دارد...'; show('end'); }, 3400); });
+S.on('win', () => { started = false; stopAmb(); $('#hud').style.display = 'none'; $('#et').innerHTML = 'ادامه دارد...'; show('end'); setTimeout(() => document.getElementById('cut')?.remove(), 300); });
 const jump = (face, msg, snd = 70) => { const f = $('#fade'); f.style.transition = 'none'; f.style.opacity = 1; f.style.fontSize = '30vmin'; f.textContent = face; beep(snd, .6, .5);
   setTimeout(() => { f.style.opacity = 0; f.textContent = ''; f.style.fontSize = ''; f.style.transition = ''; if (msg) say(msg, 4000); }, 450); };
 const EV = {
@@ -237,8 +236,209 @@ function loop(t) {
   pk -= dt; if (pk <= 0 && !cap && !hidden && LV.ch > 0) { pk = .3; keyMeshes.forEach((m, i) => { if (!lastState.k[i] && Math.hypot(m.position.x - me.x, m.position.z - me.z) < 2.2) { S.emit('pickup', i); beep(900, .2); } }); }
   hb -= dt; if (ed < 14 && hb <= 0) { beep(55, .25, .5 * (1 - ed / 14)); hb = .35 + ed / 20; }
   if (e.c && ed < 20 && Math.random() < .03) beep(40 + Math.random() * 60, .5, .08);
-  sendT += dt; if (sendT > .066 && !cap) { sendT = 0; S.emit('move', { x: me.x, z: me.z, ry: me.ry }); }
+  sendT += dt; if (sendT > .066 && !cap) { sendT = 0; S.emit('move', { x: me.x, z: me.z, ry: me.ry, l: moving ? (me.crouch ? 0 : sprint ? 2 : 1) : 0 }); }
   $('#st').style.width = me.stam * 100 + '%'; $('#bt').style.width = me.bat * 100 + '%';
   $('#obj').textContent = `${LV.lab}: ${lastState.k.reduce((a, b) => a + b, 0)} از ${lastState.k.length} ${lastState.k.every(Boolean) ? '— ' + LV.go : ''}`;
+  extra(t, dt);
   ren.render(scene, cam);
 }
+
+// =====================================================================
+// NIGHTMARE EXPANSION — chapters 4-6 (client side)
+// =====================================================================
+const FX = [], X = { ph: 20, gs: 25, bl: 9, tvOn: 0 };
+let closed = new Set(), doorMeshes = {}, amb = null;
+const wait = ms => new Promise(r => setTimeout(r, ms));
+const esc = s => String(s).replace(/[<>&"'`]/g, '');
+// ---------- audio helpers
+const pbeep = (f, d, g = .15, pan = 0, type = 'sine') => {
+  if (!AC) return; const o = AC.createOscillator(), v = AC.createGain(); o.type = type; o.frequency.value = f;
+  v.gain.setValueAtTime(g, AC.currentTime); v.gain.exponentialRampToValueAtTime(.001, AC.currentTime + d);
+  if (AC.createStereoPanner) { const p = AC.createStereoPanner(); p.pan.value = Math.max(-1, Math.min(1, pan)); o.connect(v).connect(p).connect(AC.destination); } else o.connect(v).connect(AC.destination);
+  o.start(); o.stop(AC.currentTime + d);
+};
+const noiseBurst = (d = .4, g = .25, f = 1500) => {
+  if (!AC) return; const n = AC.sampleRate * d | 0, b = AC.createBuffer(1, n, AC.sampleRate), a = b.getChannelData(0); for (let i = 0; i < n; i++) a[i] = (Math.random() * 2 - 1) * (1 - i / n);
+  const s = AC.createBufferSource(), fl = AC.createBiquadFilter(), gn = AC.createGain(); fl.type = 'bandpass'; fl.frequency.value = f; gn.gain.value = g; s.buffer = b; s.connect(fl).connect(gn).connect(AC.destination); s.start();
+};
+const crackle = () => { noiseBurst(.45, .22, 2600); pbeep(1200, .08, .08); };
+const bell = () => [520, 1040, 1560].forEach((f, i) => pbeep(f, 2.4 - i * .6, .08 / (i + 1), Math.random() * 1.2 - .6));
+const sting = (g = .6) => { noiseBurst(.9, g, 1800); pbeep(900, .8, .25, 0, 'sawtooth'); pbeep(60, .9, .5, 0, 'sawtooth'); navigator.vibrate?.([150, 50, 250]); };
+function startAmb(d) { // low drone (ch4/5) or wind (ch6)
+  stopAmb(); if (!AC) return; const n = AC.sampleRate * 2, b = AC.createBuffer(1, n, AC.sampleRate), a = b.getChannelData(0); for (let i = 0; i < n; i++) a[i] = Math.random() * 2 - 1;
+  const s = AC.createBufferSource(), f = AC.createBiquadFilter(), g = AC.createGain(), lfo = AC.createOscillator(), lg = AC.createGain(); s.buffer = b; s.loop = true; f.type = 'lowpass'; f.frequency.value = d.ch === 6 ? 520 : 200;
+  g.gain.value = d.ch === 6 ? .12 : .05; lfo.frequency.value = d.ch === 6 ? .23 : .12; lg.gain.value = g.gain.value * .8; lfo.connect(lg).connect(g.gain); s.connect(f).connect(g).connect(AC.destination); s.start(); lfo.start(); amb = { s, lfo };
+}
+function stopAmb() { if (amb) { try { amb.s.stop(); amb.lfo.stop(); } catch (e) {} amb = null; } }
+function resetX() { X.ph = 14 + Math.random() * 10; X.gs = 20 + Math.random() * 10; X.bl = 6 + Math.random() * 6; X.tvOn = 0; }
+// ---------- geometry helpers
+const solidAt = (x, z) => solid(x, z);
+const rayFree = (x, z, dx, dz, max = 24) => { let d = 0; while (d < max && !solidAt(x + dx * (d + .5), z + dz * (d + .5))) d += .5; return d; };
+function mkRambod(k = 1) { // same silhouette as the chasing creature, k > 1 = taller with huge hands
+  const g = new THREE.Group(), bm = new THREE.MeshStandardMaterial({ color: 0x0d0d0d });
+  const body = new THREE.Mesh(new THREE.BoxGeometry(.7, 2.6, .4), bm); body.position.y = 2; const head = new THREE.Mesh(new THREE.SphereGeometry(.28), bm); head.position.y = 3.5;
+  const eyes = new THREE.Mesh(new THREE.BoxGeometry(.3, .05, .05), new THREE.MeshBasicMaterial({ color: 0xff0000 })); eyes.position.set(0, 3.55, .25);
+  const ag = new THREE.BoxGeometry(.12, 2.4, .12), a1 = new THREE.Mesh(ag, bm), a2 = new THREE.Mesh(ag, bm); a1.position.set(.5, 1.6, 0); a2.position.set(-.5, 1.6, 0);
+  const hg = new THREE.SphereGeometry(.2 * k, 8, 8), h1 = new THREE.Mesh(hg, bm), h2 = new THREE.Mesh(hg, bm); h1.position.set(.5, .35, 0); h2.position.set(-.5, .35, 0);
+  g.add(body, head, eyes, a1, a2, h1, h2); if (k > 1) g.scale.set(1, 1 + (k - 1) * .5, 1); return g;
+}
+function wallSpots(M) { // every open cell face that touches a wall: position (just in front of the wall), plane rotation, wall direction
+  const out = []; M.forEach((row, r) => [...row].forEach((ch, c) => { if (ch !== '.') return;
+    [[1, 0, -Math.PI / 2], [-1, 0, Math.PI / 2], [0, -1, 0], [0, 1, Math.PI]].forEach(([dx, dz, ry]) => { if (M[r + dz]?.[c + dx] === '#') out.push({ x: (c + .5) * C + dx * (C / 2 - .04), z: (r + .5) * C + dz * (C / 2 - .04), ry, dx, dz, c, r }); }); }));
+  return out;
+}
+const cv2 = (w, h) => { const c = document.createElement('canvas'); c.width = w; c.height = h; return [c, c.getContext('2d')]; };
+const toTex = c => { const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t; };
+const spineTex = () => { const [c, x] = cv2(128, 192); x.fillStyle = '#1a1410'; x.fillRect(0, 0, 128, 192);
+  for (let r = 0; r < 5; r++) { let px = 4; const y = 8 + r * 37; x.fillStyle = '#2b2118'; x.fillRect(0, y + 30, 128, 5);
+    while (px < 122) { const w = 4 + Math.random() * 7 | 0, h = 22 + Math.random() * 8 | 0, v = 60 + Math.random() * 60 | 0; x.fillStyle = `rgb(${v + 40},${v + 25},${v})`; x.fillRect(px, y + 30 - h, w, h); x.fillStyle = '#e8dcc080'; x.fillRect(px + 1, y + 30 - h + 4, w - 2, 3); px += w + 1; } }
+  return toTex(c); };
+const photoTex = k => { const [c, x] = cv2(96, 128); x.fillStyle = '#d8cfb4'; x.fillRect(0, 0, 96, 128); x.fillStyle = '#7a6a58'; x.fillRect(6, 6, 84, 100);
+  for (let i = 0; i < 2 + k % 2; i++) { const px = 28 + i * 26; x.fillStyle = '#3a2f26'; x.beginPath(); x.ellipse(px, 62, 10, 13, 0, 0, 7); x.fill(); x.fillRect(px - 13, 76, 26, 30); x.fillStyle = '#d8cfb4'; x.fillRect(px - 5, 60, 3, 3); x.fillRect(px + 3, 60, 3, 3); }
+  x.fillStyle = '#4a3f33'; for (let i = 0; i < 3; i++) x.fillRect(10, 112 + i * 5, 50 + Math.random() * 25, 2);
+  return toTex(c); };
+function decor(d) { // props that make each new chapter look different; collision still comes from the maze map
+  const M = d.MAP, sp = wallSpots(M), P = Math.random, ud = scene.userData;
+  const mk = (geo, mat, x, y, z, ry = 0) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); m.rotation.y = ry; scene.add(m); return m; };
+  const inw = (s, k) => [s.x - s.dx * k, s.z - s.dz * k]; // move k units from the wall into the corridor
+  const MT = (c, o = {}) => new THREE.MeshStandardMaterial({ color: c, roughness: .85, ...o });
+  if (d.ch === 4) { // archive room: file shelves, pinned photos, a desk monitor
+    const sm = new THREE.MeshStandardMaterial({ map: spineTex(), roughness: .9 }), sg = new THREE.BoxGeometry(3.2, 2.6, .35), pg = new THREE.PlaneGeometry(.5, .66), pm = [0, 1, 2, 3].map(k => new THREE.MeshStandardMaterial({ map: photoTex(k), roughness: 1 }));
+    sp.forEach((s, i) => { const r = P(); const [x, z] = inw(s, .18);
+      if (r < .5) mk(sg, sm, x, 1.3, z, s.ry);
+      else if (r < .72) { const tx = s.dz ? 1 : 0, tz = s.dx ? 1 : 0; for (let k = 0; k < 3; k++) mk(pg, pm[(i + k) % 4], s.x - s.dx * .02 + tx * (k - 1) * .75, 1.25 + (k % 2) * .3, s.z - s.dz * .02 + tz * (k - 1) * .75, s.ry); } });
+    const ms = sp.filter(s => s.c + s.r > 6 && !(d.ITEMS || []).some(k => k[0] === s.c && k[1] === s.r)), s = ms[ms.length * P() | 0] || sp[0];
+    const [dx_, dz_] = inw(s, .45); mk(new THREE.BoxGeometry(1.6, .8, .7), MT(0x3a2a1c), dx_, .4, dz_, s.ry);
+    const [cx, cz] = inw(s, .38); mk(new THREE.BoxGeometry(1.1, .75, .12), MT(0x1a1a1a), cx, 1.2, cz, s.ry);
+    const [sx, sz] = inw(s, .46); ud.mon = mk(new THREE.PlaneGeometry(.95, .6), new THREE.MeshBasicMaterial({ color: 0x020202 }), sx, 1.2, sz, s.ry);
+    ud.lamp = new THREE.PointLight(0xffe0b0, .5, 12); scene.add(ud.lamp);
+  }
+  if (d.ch === 5) { // industrial basement: overhead pipes, standing carpet rolls, crates
+    const pm = MT(0x5a5f66, { metalness: .6, roughness: .45 }), pg = new THREE.CylinderGeometry(.12, .12, C, 8), wood = MT(0x6a4a2a);
+    M.forEach((row, r) => [...row].forEach((ch, c) => { if (ch !== '.' || P() > .35) return; const ew = M[r][c + 1] === '.' || M[r][c - 1] === '.', o = (P() < .5 ? -1 : 1) * 1.2;
+      const m = mk(pg, pm, (c + .5) * C + (ew ? 0 : o), 2.85, (r + .5) * C + (ew ? o : 0)); if (ew) m.rotation.z = Math.PI / 2; else m.rotation.x = Math.PI / 2; }));
+    sp.forEach((s, i) => { const r = P(), [x, z] = inw(s, .55);
+      if (r < .22) mk(new THREE.CylinderGeometry(.35, .35, 2.4, 14), cmat(i), x, 1.2, z);
+      else if (r < .38) { mk(new THREE.BoxGeometry(1, 1, 1), wood, x, .5, z, P() * .5); if (P() < .5) mk(new THREE.BoxGeometry(.9, .9, .9), wood, x, 1.45, z, P()); } });
+  }
+  if (d.ch === 6) { // abandoned floor: broken shelves, black windows, dead TVs, dusty carpets, flickering fixtures
+    const wood = MT(0x2a2018), frame = MT(0x2b2118), black = new THREE.MeshBasicMaterial({ color: 0x000000 }), bk = MT(0x151515), tvs = [];
+    sp.forEach((s, i) => { const r = P(), [x, z] = inw(s, .35);
+      if (r < .3) { const m = mk(new THREE.BoxGeometry(3, 2.2, .35), wood, x, 1.1, z, s.ry); m.rotation.z = (P() - .5) * .25; m.rotation.x = (P() - .5) * .15; for (let k = 0; k < 2; k++) mk(new THREE.BoxGeometry(1.4, .08, .25), wood, x + (P() - .5) * 2, .05, z + (P() - .5) * 2, P() * 3); }
+      else if (r < .5) { const [fx, fz] = inw(s, .02); mk(new THREE.BoxGeometry(1.8, 1.6, .06), frame, fx, 1.7, fz, s.ry); const [bx, bz] = inw(s, .07); mk(new THREE.PlaneGeometry(1.5, 1.3), black, bx, 1.7, bz, s.ry); }
+      else if (r < .6) { const [tx, tz] = inw(s, .5); mk(new THREE.BoxGeometry(1.2, .6, 1), wood, tx, .3, tz, s.ry); mk(new THREE.BoxGeometry(.95, .7, .7), bk, tx, .95, tz, s.ry); const [px, pz] = inw(s, .86); tvs.push(mk(new THREE.PlaneGeometry(.72, .5), new THREE.MeshBasicMaterial({ color: 0x050505 }), px, .98, pz, s.ry)); } });
+    M.forEach((row, r) => [...row].forEach((ch, c) => { if (ch !== '.' || P() > .12) return; const m = cmat(r + c); m.color.setHex(0x777777); const q = mk(new THREE.PlaneGeometry(2.4, 3.6), m, (c + .5) * C + (P() - .5) * 1.5, .03, (r + .5) * C + (P() - .5) * 1.5); q.rotation.x = -Math.PI / 2; q.rotation.z = P() * 3; }));
+    ud.fix = []; M.forEach((row, r) => [...row].forEach((ch, c) => { if (ch !== '.' || P() > .3) return; const m = new THREE.MeshBasicMaterial({ color: 0xaa9a70 }); mk(new THREE.BoxGeometry(1.2, .1, .25), m, (c + .5) * C, 3.12, (r + .5) * C); ud.fix.push({ m, p: P() * 20 }); }));
+    ud.tvs = tvs; ud.lamp = new THREE.PointLight(0xffd9a0, .5, 14); scene.add(ud.lamp);
+  }
+}
+const syncDoors = () => { // closed corridor doors (chapter 5)
+  closed.forEach(k => { if (!doorMeshes[k]) { const r = Math.floor(k / 100), c = k % 100, ns = M[r][c - 1] === '#' && M[r][c + 1] === '#';
+      const m = new THREE.Mesh(new THREE.BoxGeometry(ns ? C : .4, 3.1, ns ? .4 : C), new THREE.MeshStandardMaterial({ color: 0x4a4f55, metalness: .6, roughness: .5 })); m.position.set((c + .5) * C, 1.55, (r + .5) * C); scene.add(m); doorMeshes[k] = m; } doorMeshes[k].visible = true; });
+  for (const k in doorMeshes) if (!closed.has(+k)) doorMeshes[k].visible = false;
+};
+// ---------- full-screen scare overlays
+const overlay = (html, ms, css = '') => { const o = document.createElement('div'); o.style.cssText = 'position:fixed;inset:0;z-index:99998;pointer-events:none;overflow:hidden;' + css; o.innerHTML = html; document.body.appendChild(o); setTimeout(() => o.remove(), ms); return o; };
+const FACE = (sk = '#cfc6b8', gl = '#f11', h = '120vh') => `<svg viewBox="0 0 300 400" style="height:${h}"><ellipse cx="150" cy="190" rx="95" ry="165" fill="${sk}"/><ellipse cx="108" cy="150" rx="30" ry="42" fill="#000"/><ellipse cx="192" cy="150" rx="30" ry="42" fill="#000"/><circle cx="108" cy="156" r="9" fill="${gl}"/><circle cx="192" cy="156" r="9" fill="${gl}"/><path d="M60 255 Q150 215 240 255 L225 360 Q150 420 75 360Z" fill="#100"/><path d="M75 262 L90 310 L105 258 L120 318 L135 255 L150 322 L165 255 L180 318 L195 258 L210 310 L225 262" fill="none" stroke="#eee" stroke-width="9"/><path d="M108 108 L90 60 M192 108 L214 58" stroke="#000" stroke-width="7"/></svg>`;
+const KF = '<style>@keyframes zm2{0%{transform:scale(.2) rotate(-5deg)}20%{transform:scale(1.4) rotate(3deg)}100%{transform:scale(2.1) rotate(-3deg)}}@keyframes sh2{0%,100%{translate:0 0}25%{translate:-24px 14px}50%{translate:20px -18px}75%{translate:-14px -22px}}@keyframes gz{0%{transform:translateY(70%) scale(.55)}100%{transform:translateY(6%) scale(1)}}@keyframes dg{0%{width:6%}100%{width:30%}}@keyframes mf{0%,100%{opacity:1}48%{opacity:.55}52%{opacity:1}}</style>';
+function scareFace(ms = 1000) { overlay(`${KF}<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:#000"><div style="animation:zm2 ${ms}ms ease-out forwards,sh2 .08s linear infinite">${FACE()}</div></div>`, ms); sting(); }
+function scareGlass() { // power comes on: Rambod behind the control-room window
+  crackle(); overlay(`${KF}<div style="position:absolute;inset:0;background:#030806;display:flex;align-items:center;justify-content:center"><div style="position:relative;width:min(84vw,680px);height:min(66vh,440px);border:16px solid #2c312e;background:linear-gradient(135deg,#143a30,#04100c);overflow:hidden;box-shadow:0 0 70px #000"><div style="position:absolute;inset:0;display:flex;justify-content:center;align-items:flex-start;animation:gz 1.2s ease-in forwards,sh2 .1s linear infinite">${FACE('#9fb09c', '#3f3', '110%')}</div><div style="position:absolute;inset:0;background:linear-gradient(115deg,#fff3 0,transparent 35%,#fff1 62%,transparent 80%)"></div><svg viewBox="0 0 100 60" preserveAspectRatio="none" style="position:absolute;inset:0;width:100%;height:100%"><path d="M62 0 L55 20 L70 28 L52 44 L60 60 M55 20 L38 26 L30 40" stroke="#dfe" stroke-width=".5" fill="none" opacity=".6"/></svg></div></div>`, 1700);
+  setTimeout(() => sting(.5), 1000);
+}
+function scareDoor() { // security door opens: his face for a moment in the gap
+  overlay(`${KF}<div style="position:absolute;inset:0;background:#000;display:flex;justify-content:center"><div style="flex:1;background:linear-gradient(90deg,#2a2f35,#4a5058);border-right:4px solid #111"></div><div style="width:26%;overflow:hidden;display:flex;justify-content:center;align-items:center;background:#000;animation:dg .7s ease-out forwards">${FACE('#cfc6b8', '#f11', '100vh')}</div><div style="flex:1;background:linear-gradient(270deg,#2a2f35,#4a5058);border-left:4px solid #111"></div></div>`, 750); sting(.45);
+}
+function rambodNear(dur = 450) { // Rambod appears right in front of the camera for an instant
+  const g = mkRambod(); g.position.set(me.x - Math.sin(me.ry) * 1.5, 0, me.z - Math.cos(me.ry) * 1.5); g.lookAt(me.x, 0, me.z); scene.add(g);
+  noiseBurst(.4, .35, 900); pbeep(45, .5, .6); navigator.vibrate?.(180); setTimeout(() => scene.remove(g), dur);
+}
+function monitorEvent(w) { // room monitor switches on: the player's name on a file dated three days ago
+  const nm = esc(lastState.p[w]?.n || cfg.name || 'بازیکن'), ds = new Date(Date.now() - 3 * 864e5).toLocaleDateString('fa-IR'), m = scene.userData.mon;
+  crackle(); say('مانیتور اتاق ناگهان روشن می‌شود...', 2500);
+  if (m) { m.material.color.setHex(0x66ff99); m.add(new THREE.PointLight(0x66ff99, 1.6, 10)); }
+  overlay(`${KF}<div style="position:absolute;left:50%;top:42%;transform:translate(-50%,-50%);width:min(86vw,620px);background:#010d05;border:3px solid #2f6;box-shadow:0 0 40px #0f6a;padding:22px 28px;color:#6f8;font-family:monospace;font-size:clamp(14px,2.6vw,24px);line-height:2;direction:rtl;text-align:right;animation:mf .3s infinite"><div>📁 پروندهٔ مشتری</div><div>نام: <b>${nm}</b></div><div>تاریخ ثبت: ${ds}</div><div style="color:#f55">⚠ این تاریخ سه روز پیش است...</div></div>`, 6500, 'background:#000a');
+}
+function photoEvent() { // a face inside a customer photo slowly changes
+  say('عکس‌ها و مدارک مشتریان را بررسی می‌کنی...', 2600);
+  const o = overlay(`<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center"><div style="width:min(72vw,430px);background:#d8cfb8;padding:14px 14px 30px;transform:rotate(-2deg);box-shadow:0 0 50px #000"><svg viewBox="0 0 300 220" style="width:100%;display:block"><rect width="300" height="220" fill="#7a6a58"/><circle cx="70" cy="105" r="22" fill="#3a2f26"/><path d="M40 220 L45 135 Q70 125 95 135 L100 220Z" fill="#3a2f26"/><circle cx="230" cy="105" r="22" fill="#3a2f26"/><path d="M200 220 L205 135 Q230 125 255 135 L260 220Z" fill="#3a2f26"/><g id="pf"><ellipse id="ph" cx="150" cy="96" rx="27" ry="32" fill="#4a3c30"/><path d="M110 220 L116 140 Q150 126 184 140 L190 220Z" fill="#3a2f26"/><circle id="pe1" cx="138" cy="90" r="3" fill="#d8cfb8"/><circle id="pe2" cx="162" cy="90" r="3" fill="#d8cfb8"/><path id="pm" d="M136 112 Q150 122 164 112" stroke="#d8cfb8" stroke-width="3" fill="none"/></g></svg><div style="color:#4a3f33;font-size:15px;margin-top:8px;text-align:center">مشتری‌های سابق</div></div></div><div id="pr" style="position:absolute;inset:0;background:#a00;opacity:0"></div>`, 7600, 'background:#000b');
+  let s = 0; const q = id => o.querySelector(id), iv = setInterval(() => { s += .01; if (s >= 1 || !q('#ph')) return clearInterval(iv);
+    q('#ph').setAttribute('ry', 32 + s * 9); q('#ph').setAttribute('fill', `rgb(${74 - s * 20 | 0},${60 + s * 40 | 0},${48 + s * 18 | 0})`);
+    q('#pe1').setAttribute('r', 3 + s * 6); q('#pe2').setAttribute('r', 3 + s * 6); q('#pe1').setAttribute('fill', s > .5 ? '#000' : '#d8cfb8'); q('#pe2').setAttribute('fill', s > .5 ? '#000' : '#d8cfb8');
+    q('#pm').setAttribute('d', `M${136 - s * 12} 112 Q150 ${122 + s * 58} ${164 + s * 12} 112`); q('#pm').setAttribute('stroke', s > .6 ? '#000' : '#d8cfb8'); q('#pf').setAttribute('transform', `rotate(${s * 9} 150 120)`); q('#pr').style.opacity = s * .35; }, 60);
+  setTimeout(() => say('چهرهٔ یکی از افراد داخل عکس عوض شده... به تو خیره شده است.', 4200), 6800);
+}
+// ---------- events fired by the server (chapters 4-6)
+Object.assign(EV, {
+  photo: () => photoEvent(),
+  monitor: w => monitorEvent(w),
+  wall: () => { say('صدای قدم‌های رامبد جوان از پشت دیوار شنیده می‌شود...', 4500); const side = Math.random() < .5 ? -1 : 1; for (let i = 0; i < 11; i++) setTimeout(() => pbeep(72 + Math.random() * 12, .13, .35, side * (.9 - i * .17), 'triangle'), 600 + i * 520); },
+  behind: () => { const y0 = me.ry, t0 = performance.now(); FX.push(() => { if (performance.now() - t0 > 60000) return false; if (Math.abs(Math.atan2(Math.sin(me.ry - y0), Math.cos(me.ry - y0))) < 2) return true; rambodNear(); return false; }); },
+  doorshut: () => { beep(60, .5, .6); noiseBurst(.3, .4, 400); say('دری با صدای وحشتناکی بسته شد!', 2500); },
+  carpet: () => { // a carpet slides along the floor, then Rambod rises from behind it
+    const fx = -Math.sin(me.ry), fz = -Math.cos(me.ry), free = rayFree(me.x, me.z, fx, fz, 9), dist = Math.max(2.5, free - .8), m = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 3.6), cmat(3));
+    m.rotation.set(-Math.PI / 2, 0, Math.random() * 3); let px = me.x + fx * dist, pz = me.z + fz * dist; m.position.set(px, .06, pz); scene.add(m); say('یک فرش روی زمین می‌لغزد...', 3000); pbeep(110, 1.5, .12, 0, 'triangle');
+    const t0 = performance.now(); let g = null;
+    FX.push(() => { const age = (performance.now() - t0) / 1000;
+      if (age < 2.6) { const dx = me.x - px, dz = me.z - pz, d = Math.hypot(dx, dz) || 1, v = .9 * (1 / 60); if (d > 1.8 && !solidAt(px + dx / d * v * 2, pz + dz / d * v * 2)) { px += dx / d * v; pz += dz / d * v; } m.position.set(px, .06, pz); return true; }
+      if (!g) { g = mkRambod(); g.position.set(px, 0, pz); g.scale.y = .1; g.lookAt(me.x, 0, me.z); scene.add(g); }
+      g.scale.y = Math.min(1, g.scale.y + .15); g.lookAt(me.x, 0, me.z);
+      if (age > 3.1) { scareFace(900); scene.remove(g); scene.remove(m); return false; } return true; });
+  },
+  glass: () => { say('برق بخش صنعتی روشن شد... پشت شیشهٔ اتاق کنترل یک نفر ایستاده است!', 3500); setTimeout(scareGlass, 1100); },
+  doorface: () => { say('در امنیتی با صدای سنگین باز می‌شود...', 2500); setTimeout(scareDoor, 1300); },
+  pa: () => setTimeout(() => { crackle(); bell(); say('پژمان جمشیدی (از بلندگو): «اگه این صدا رو می‌شنوی، یعنی هنوز زنده‌ای... ولی به من اعتماد نکن.»', 7000); }, 9500),
+  tv: () => { // every old TV switches on at once, all showing the player
+    crackle(); say('تلویزیون‌های قدیمی فروشگاه هم‌زمان روشن می‌شوند...', 3200); X.tvOn = 1;
+    const col = esc(cfg.col), nm = esc(cfg.name || 'بازیکن'), tile = `<div style="position:relative;background:repeating-linear-gradient(0deg,#1a1d1a 0 3px,#111411 3px 6px);border:5px solid #222;border-radius:10px;overflow:hidden;animation:mf .2s infinite"><svg viewBox="0 0 100 80" style="width:100%;display:block"><circle cx="50" cy="30" r="12" fill="${col}"/><path d="M26 80 Q30 48 50 46 Q70 48 74 80Z" fill="${col}"/></svg><div style="position:absolute;bottom:4px;width:100%;text-align:center;color:#ddd;font-size:13px">${nm}</div></div>`;
+    overlay(`${KF}<div style="position:absolute;inset:0;display:grid;grid-template-columns:repeat(3,1fr);gap:10px;padding:12vh 8vw;align-content:center">${tile.repeat(6)}</div>`, 4300, 'background:#000c');
+    setTimeout(() => { crackle(); say('عمو پورنگ (از بلندگو): «فکر کردی می‌تونی از اینجا فرار کنی؟»', 5000); }, 4600); setTimeout(() => { X.tvOn = 0; (scene.userData.tvs || []).forEach(s => s.material.color.setHex(0x050505)); }, 14000);
+  },
+  final: () => { // last fuse: lights on, Rambod (huge) at the end of the hall, lights off, something sprints
+    const ud = scene.userData; say('آخرین فیوز نصب شد... تمام چراغ‌های فروشگاه روشن می‌شوند!', 2800); LV.lit = true; ud.amb.intensity = 3.2; scene.fog.density = .022; if (ud.el) { ud.el.color.setHex(0x33ff66); ud.el.intensity = 3; ud.el.distance = 70; }
+    let best = null; for (let k = 0; k < 16; k++) { const a = k / 16 * Math.PI * 2, dx = -Math.sin(a), dz = -Math.cos(a), f = rayFree(me.x, me.z, dx, dz, 24), face = Math.cos(a - me.ry), sc = f >= 7 ? face * 10 + Math.min(f, 20) : -1; if (!best || sc > best.sc) best = { sc, dx, dz, f }; }
+    const g = mkRambod(1.8); g.position.set(me.x + best.dx * Math.max(4, Math.min(best.f - 1, 20)), 0, me.z + best.dz * Math.max(4, Math.min(best.f - 1, 20))); scene.add(g); pbeep(40, 2.2, .35, 0, 'sawtooth');
+    FX.push(() => { g.lookAt(me.x, 0, me.z); return !!g.parent; });
+    setTimeout(() => { scene.remove(g); LV.lit = false; ud.amb.intensity = 1.2; scene.fog.density = LV.fogD || .09; beep(40, 1.4, .5);
+      say('چراغ‌ها خاموش شدند... صدای دویدن بسیار سریع! فوراً وارد در مخفی شو!', 5000);
+      for (let i = 0; i < 22; i++) setTimeout(() => pbeep(95 + (i % 2) * 14, .08, .2 + i * .02, Math.sin(i * .6) * .8, 'square'), i * (230 - i * 6)); }, 2800);
+  }
+});
+// ---------- end-of-chapter cutscenes (the server waits until every player answers 'cutdone')
+const person = hot => `<svg viewBox="0 0 200 120" style="position:absolute;inset:0;width:100%;height:100%">${hot ? '<rect x="82" y="8" width="36" height="104" fill="#050505"/><circle cx="100" cy="14" r="10" fill="#050505"/><rect x="94" y="12" width="5" height="2" fill="#f22"/><rect x="101" y="12" width="5" height="2" fill="#f22"/>' : ''}<circle cx="100" cy="68" r="11" fill="${esc(cfg.col)}"/><path d="M82 112 Q86 84 100 82 Q114 84 118 112Z" fill="${esc(cfg.col)}"/></svg>`;
+const cctv = hot => `<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;width:min(92vw,760px)">${[1, 2, 3, 4].map(i => `<div style="position:relative;height:min(26vh,200px);background:repeating-linear-gradient(0deg,#0d150f 0 3px,#0a100c 3px 6px);border:2px solid ${hot && i === 3 ? '#e22' : '#2a4a34'};overflow:hidden"><span style="position:absolute;top:4px;left:8px;color:#6f8;font:12px monospace">CAM 0${i}</span><span style="position:absolute;top:4px;right:8px;color:#e44;font:12px monospace">● REC</span>${i === 3 ? person(hot) : ''}</div>`).join('')}</div>`;
+const stairs = `<svg viewBox="0 0 300 200" style="width:min(80vw,520px)"><defs><linearGradient id="sg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#000"/><stop offset="1" stop-color="#2a2622"/></linearGradient></defs><rect width="300" height="200" fill="#050505"/>${[0, 1, 2, 3, 4, 5, 6].map(i => `<path d="M${40 + i * 12} ${40 + i * 22} L${260 - i * 12} ${40 + i * 22} L${260 - i * 12 - 6} ${62 + i * 22} L${46 + i * 12} ${62 + i * 22}Z" fill="url(#sg)" stroke="#3a342e" stroke-width="1" opacity="${1 - i * .09}"/>`).join('')}</svg>`;
+const CUTS = {
+  3: async ({ T }) => { beep(55, 1.4, .5); await T('آسانسور حرکت می‌کند... چراغ‌ها خاموش می‌شوند.<br>«یه لحظه صبر کن...»', 3800); await T('چراغ روشن می‌شود... عمو پورنگ داخل آسانسور ایستاده است.', 3600); crackle(); await T('📺 تلویزیون قدیمی روشن می‌شود.<br>پژمان جمشیدی: «حالا دیگه وقتشه حقیقت رو بدونی...»', 4400); beep(70, .8, .4); await T('آسانسور باز می‌شود... بوی کاغذ کهنه و خاک.', 2600); },
+  4: async ({ T }) => { await T('پرونده را باز می‌کنی...', 2600); crackle(); await T('«این مشتری برای آزمایش نهایی انتخاب شده است.»', 4600, 'border:2px solid #2f6;padding:18px 28px;background:#021208;color:#6f8;font-family:monospace;text-shadow:0 0 10px #0f6'); await T('', 400); beep(50, 1.2, .5); await T('چراغ‌ها خاموش می‌شوند...', 2600, 'color:#777'); await T('صدای عمو پورنگ در تاریکی:<br>«بالاخره رسیدی...»', 4200, 'color:#c66'); },
+  5: async ({ T, V }) => { V(cctv(false)); noiseBurst(.5, .15, 3000); await T('به اتاق کنترل می‌رسی و تصویر دوربین‌ها را نگاه می‌کنی...', 3600); V(cctv(true)); pbeep(48, 1.6, .3, 0, 'sawtooth'); await T('در یکی از دوربین‌ها، رامبد جوان دقیقاً پشت سر تو ایستاده است.', 4400, 'color:#f66'); V(''); beep(60, .5, .5); await T('برمی‌گردی.', 2400); await T('هیچ‌کس آنجا نیست.', 3600, 'color:#aaa'); },
+  6: async ({ T, V }) => { beep(60, 1, .4); await T('در مخفی باز می‌شود... وارد یک راه‌پلهٔ تاریک می‌شوی که به طبقهٔ سوم زیرزمین می‌رود.', 4600); V(stairs); await T('روی دیوار نوشته شده:', 2600); await T('«هیچ‌کس از طبقه سوم برنگشته است.»', 5200, 'color:#c11;font-weight:700;text-shadow:0 0 14px #800;font-size:1.3em'); V(''); await T('', 2400); }
+};
+async function runCut(ch) {
+  const o = document.createElement('div'); o.id = 'cut'; o.style.cssText = 'position:fixed;inset:0;z-index:100000;background:#000;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:18px;color:#ddd;text-align:center;font-size:clamp(18px,3.2vw,30px);padding:24px;line-height:1.9;transition:opacity .8s;opacity:0';
+  o.innerHTML = '<div id="cv" style="width:100%;display:flex;justify-content:center"></div><div id="ct" style="max-width:820px"></div>'; document.body.appendChild(o); document.exitPointerLock?.();
+  await wait(30); o.style.opacity = 1;
+  const V = h => { o.querySelector('#cv').innerHTML = h; }, T = (t, ms, css = '') => { const e = o.querySelector('#ct'); e.style.cssText = css; e.innerHTML = t; return wait(ms); };
+  try { await CUTS[ch]?.({ T, V }); } catch (e) {}
+  S.emit('cutdone'); setTimeout(() => { if (ch < 6 && o.isConnected) o.remove(); }, 9000); // the next chapter's 'started' event fades it out
+}
+S.on('cut', ch => runCut(ch));
+function extra(t, dt) { // per-frame logic for chapters 4-6
+  for (let i = FX.length - 1; i >= 0; i--) if (FX[i](t, dt) === false) FX.splice(i, 1);
+  const ch = LV.ch; if (ch < 4) return; const ud = scene.userData;
+  syncDoors();
+  if (ud.lamp) { ud.lamp.position.set(me.x, 2.8, me.z); ud.lamp.intensity = LV.lit ? 0 : (Math.sin(t / 130) + Math.sin(t / 47) > 1.2 ? 0 : .35 + Math.random() * .5); }
+  if (ud.fix) ud.fix.forEach(f => { const v = LV.lit ? .9 : (Math.sin(t / 120 + f.p) + Math.sin(t / 37 + f.p * 3) > 1.1 ? .04 : .5); f.m.color.setRGB(v, v * .92, v * .7); });
+  if (ud.tvs && X.tvOn) ud.tvs.forEach(s => s.material.color.setScalar(.4 + Math.random() * .6));
+  if (LV.hideExit && ud.ex) { const all = lastState.k.every(Boolean); ud.ex.visible = all; ud.el.visible = all; } // the hidden door only shows once the power is on
+  if (cap || hidden || !started) return;
+  if (ch === 5) { X.ph -= dt; X.gs -= dt; if (X.ph <= 0) { X.ph = 22 + Math.random() * 18; phantom(); } if (X.gs <= 0) { X.gs = 20 + Math.random() * 15; ghostSteps(); } }
+  if (ch === 6) { X.bl -= dt; if (X.bl <= 0) { X.bl = 9 + Math.random() * 11; bell(); } }
+}
+function phantom() { // Rambod far away at the end of a corridor — he vanishes before you can reach him
+  const opts = []; for (let k = -4; k <= 4; k++) { const a = me.ry + k * .15, dx = -Math.sin(a), dz = -Math.cos(a), f = rayFree(me.x, me.z, dx, dz, 24); if (f >= 12) opts.push([dx, dz, Math.min(f - 1, 20)]); }
+  if (!opts.length) { X.ph = 5; return; }
+  const [dx, dz, f] = opts[Math.random() * opts.length | 0], g = mkRambod(); g.position.set(me.x + dx * f, 0, me.z + dz * f); scene.add(g); pbeep(48, 1.4, .25); say('در انتهای راهرو... یک نفر ایستاده است.', 2600);
+  const t0 = performance.now(); FX.push(() => { g.lookAt(me.x, 0, me.z); g.visible = Math.random() > .08; if (performance.now() - t0 > 3200 || Math.hypot(g.position.x - me.x, g.position.z - me.z) < 8) { scene.remove(g); return false; } return true; });
+}
+function ghostSteps() { say('صدای قدم‌هایی از پشت سرت شنیده می‌شود... ولی هیچ‌کس نیست.', 4200); for (let i = 0; i < 10; i++) setTimeout(() => pbeep(70 + (i % 2) * 8, .1, .12 + i * .035, 0, 'triangle'), 400 + i * (520 - i * 22)); }
