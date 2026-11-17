@@ -24,7 +24,9 @@ function load(r, ch) {
   r.cells = []; L.MAP.forEach((row, y) => [...row].forEach((c, x) => c === '.' && r.cells.push([x, y])));
   r.keys = L.ITEMS.map(() => 0); r.fired = {}; r.doors = []; r.dcool = 0; r.hold = false;
   const f = r.cells.filter(c => c[0] + c[1] > 12)[0] || r.cells[r.cells.length - 1];
-  r.e = { x: mid(f[0]), z: mid(f[1]), goal: f, stun: 0, chase: false, rage: 0 };
+  r.junc = r.cells.filter(([c, y]) => [[1, 0], [-1, 0], [0, 1], [0, -1]].filter(([a, b]) => open(L, c + a, y + b)).length !== 2); // corners, junctions, dead ends = patrol waypoints
+  r.farT = Date.now() + 35000 + rnd(25000); r.ambT = Date.now() + 80000 + rnd(30000);
+  r.e = { x: mid(f[0]), z: mid(f[1]), goal: f, stun: 0, chase: false, rage: 0, mode: 'patrol', ct: 0, sN: 0, sT: 0, last: f };
   Object.values(r.players).forEach(p => Object.assign(p, { x: mid((L.SP || [1, 1])[0]), z: mid((L.SP || [1, 1])[1]), cap: false, hid: false, l: 0, gt: 0 }));
 }
 const send = r => ({ ...r.L, C, SP: r.L.SP || [1, 1] });
@@ -36,7 +38,7 @@ function advance(r) {
 }
 function proceed(r) {
   r.hold = false;
-  if (r.ch >= 6) { r.started = false; io.to(r.code).emit('win'); }
+  if (r.ch >= 8) { r.started = false; io.to(r.code).emit('win'); }
   else { load(r, r.ch + 1); io.to(r.code).emit('started', send(r)); }
 }
 // chapter 5: when the chase starts, Rambod slams a couple of corridor doors shut for a few seconds
@@ -45,6 +47,35 @@ function closeDoors(r, p, now) {
   const cand = r.cells.filter(([c, y]) => { const d = Math.abs(c - pc) + Math.abs(y - pr); return d >= 3 && d <= 8 && corr(L, c, y) && !(c === L.EXIT[0] && y === L.EXIT[1]); });
   for (let k = 0; k < 2 && cand.length; k++) { const [c, y] = cand.splice(rnd(cand.length), 1)[0]; r.doors.push({ c, r: y, until: now + 7000 }); }
   r.dcool = now + 16000; io.to(r.code).emit('ev', { id: 'doorshut', who: '' });
+}
+// patrol: walk between junctions, sometimes drifting toward where a player might be
+function pickPatrol(r, e) {
+  const ec = cell(e.x), er = cell(e.z), ps = Object.values(r.players).filter(p => !p.cap);
+  if (ps.length && Math.random() < .3) { const p = ps[rnd(ps.length)], pc = cell(p.x), pr = cell(p.z), near = r.junc.filter(([c, y]) => Math.abs(c - pc) + Math.abs(y - pr) <= 12); if (near.length) return near[rnd(near.length)]; }
+  const far = r.junc.filter(([c, y]) => Math.abs(c - ec) + Math.abs(y - er) > 5), a = far.length ? far : r.cells; return a[rnd(a.length)];
+}
+// unpredictable presence: Rambod stands far away in plain sight and vanishes; later chapters add a sudden ambush after a moment of silence
+function fearTick(r, now) {
+  const L = r.L, e = r.e; if (L.noEnemy || e.chase || e.stun > 0 || r.hold) return;
+  const alive = Object.entries(r.players).filter(([, p]) => !p.cap && !p.hid); if (!alive.length) return;
+  if (L.ch >= 2 && now > r.farT) {
+    r.farT = now + (L.ch >= 7 ? 40000 : 55000) + rnd(30000);
+    const [pid, p] = alive[rnd(alive.length)], cs = r.cells.filter(c => { const x = mid(c[0]), z = mid(c[1]), d = Math.hypot(x - p.x, z - p.z); return d > 13 && d < 26 && los(L, { x, z }, p); });
+    if (cs.length) {
+      const c = cs[rnd(cs.length)]; e.x = mid(c[0]); e.z = mid(c[1]); e.stun = 3.4; e.goal = c; io.to(pid).emit('ev', { id: 'farseen', who: pid });
+      const L0 = L; setTimeout(() => { if (rooms[r.code] !== r || r.L !== L0 || r.e !== e || r.hold) return;
+        const far = r.cells.filter(cc => Math.hypot(mid(cc[0]) - e.x, mid(cc[1]) - e.z) > 22), f = far[rnd(far.length)] || r.cells[0]; e.x = mid(f[0]); e.z = mid(f[1]); e.goal = f; e.mode = 'patrol'; e.stun = 0; }, 3000);
+    }
+    return;
+  }
+  if (L.ambush && now > r.ambT) {
+    r.ambT = now + 70000 + rnd(40000);
+    const [pid] = alive[rnd(alive.length)], L0 = L; io.to(r.code).emit('ev', { id: 'hush', who: '' });
+    setTimeout(() => { if (rooms[r.code] !== r || r.L !== L0 || r.e !== e || r.hold) return;
+      const q = r.players[pid]; if (!q || q.cap) return;
+      const cs = r.cells.filter(c => { const d = Math.hypot(mid(c[0]) - q.x, mid(c[1]) - q.z); return d > 8 && d < 13; }); if (!cs.length) return;
+      const c = cs[rnd(cs.length)]; e.x = mid(c[0]); e.z = mid(c[1]); e.goal = [cell(q.x), cell(q.z)]; e.stun = 0; e.rage = Date.now() + 6000; io.to(pid).emit('ev', { id: 'ambush', who: pid }); }, 2600);
+  }
 }
 io.on('connection', s => {
   let R = null;
@@ -72,6 +103,9 @@ io.on('connection', s => {
     io.to(R.code).emit('say', mg ? mg.replace('{n}', q.name).replace(/\{code\}/g, L.code || '') : q.name + ' ' + L.verb);
     if (L.hear && !R.e.chase) { R.e.goal = [it[0], it[1]]; R.e.stun = 0; } // objectives make noise: Rambod walks over to investigate
     const pe = L.PICK && L.PICK[i]; if (pe) io.to(R.code).emit('ev', { id: pe, who: s.id });
+    const rg = L.RAGEAT && L.RAGEAT[i]; // e.g. shutting down the main machine: Rambod rages across the whole level
+    if (rg) { const t = Date.now(), far = R.cells.filter(c => { const d = Math.hypot(mid(c[0]) - q.x, mid(c[1]) - q.z); return d > 16 && d < 30; }), f = far[rnd(far.length)] || R.cells[0];
+      R.e.x = mid(f[0]); R.e.z = mid(f[1]); R.e.stun = 0; R.e.rage = t + rg; R.dcool = 0; }
     if (L.FINAL && R.keys.every(Boolean)) {
       io.to(R.code).emit('ev', { id: L.FINAL, who: s.id }); const r = R, px = q.x, pz = q.z;
       setTimeout(() => { // finale: lights go out and Rambod charges from far away
@@ -101,19 +135,32 @@ setInterval(() => {
     if (L.noEnemy) { e.x = e.z = -99; e.chase = false; }
     else if (e.stun > 0) e.stun -= dt;
     else {
-      const rage = e.rage > now, rng = rage ? 999 : (L.range || 16); let tgt = null, best = 999;
+      const rage = e.rage > now, rng = rage ? 999 : (L.range || 16); let tgt = null, best = 999, inv = null, ib = 999;
       for (const [, p] of alive) {
         const d = Math.hypot(p.x - e.x, p.z - e.z);
         const ear = L.hear ? (p.l === 2 ? 15 : p.l === 1 ? 7 : 0) : 0; // sprinting is loud, walking is quiet, crouching/standing is silent
         const seen = d < rng && (!L.los || rage || los(L, e, p));
-        if (d < best && (!p.hid || d < 2) && (seen || d < ear)) { best = d; tgt = p; }
+        if (p.hid && d >= 2) continue;
+        if ((seen || d < ear * .55) && d < best) { best = d; tgt = p; }
+        else if (d < ear && d < ib) { ib = d; inv = p; } // heard but not seen: go and investigate
       }
       const was = e.chase; e.chase = !!tgt;
-      if (tgt) e.goal = [cell(tgt.x), cell(tgt.z)];
-      else if (cell(e.x) === e.goal[0] && cell(e.z) === e.goal[1]) e.goal = r.cells[rnd(r.cells.length)];
+      if (tgt) { e.goal = [cell(tgt.x), cell(tgt.z)]; e.last = e.goal; e.ct = (e.ct || 0) + dt; e.mode = 'chase'; }
+      else {
+        e.ct = 0;
+        if (was) { e.mode = 'search'; e.sN = 3; e.sT = now + 18000; e.goal = e.last || e.goal; }
+        else if (inv) { e.mode = 'inv'; e.goal = [cell(inv.x), cell(inv.z)]; e.last = e.goal; e.sT = now + 12000; }
+        if (cell(e.x) === e.goal[0] && cell(e.z) === e.goal[1]) {
+          if (e.mode === 'inv') { e.mode = 'search'; e.sN = 2; e.sT = now + 14000; }
+          if (e.mode === 'search' && e.sN > 0) { // check other paths around the last known position
+            const sp = r.cells.filter(([c, y]) => { const dd = Math.abs(c - e.last[0]) + Math.abs(y - e.last[1]); return dd >= 2 && dd <= 9; }); e.goal = sp.length ? sp[rnd(sp.length)] : pickPatrol(r, e); e.sN--;
+          } else { e.mode = 'patrol'; e.goal = pickPatrol(r, e); }
+        }
+        if ((e.mode === 'search' || e.mode === 'inv') && now > e.sT) { e.mode = 'patrol'; e.goal = pickPatrol(r, e); }
+      }
       if (L.doors && e.chase && !was && now > r.dcool) closeDoors(r, tgt, now);
       const nx = bfsNext(L, [cell(e.x), cell(e.z)], e.goal), tx = mid(nx[0]), tz = mid(nx[1]);
-      const d = Math.hypot(tx - e.x, tz - e.z) || 1, sp = (e.chase ? (rage ? Math.max(L.chase, 6.4) : L.chase) : 2.2) * dt;
+      const d = Math.hypot(tx - e.x, tz - e.z) || 1, sp = (e.chase ? (rage ? Math.max(L.chase, 6.4) : L.chase) + Math.min(1.4, (e.ct || 0) * .12) : e.mode === 'inv' ? Math.min(3.8, L.chase * .6) : e.mode === 'search' ? 3.1 : 2.2) * dt; // speeds up the longer a chase lasts
       e.x += (tx - e.x) / d * Math.min(sp, d); e.z += (tz - e.z) / d * Math.min(sp, d);
       for (const [pid, p] of alive) if (Math.hypot(p.x - e.x, p.z - e.z) < 1.6) {
         p.cap = true; p.hid = false; e.stun = 4; e.rage = 0;
@@ -121,6 +168,7 @@ setInterval(() => {
         e.x = mid(f[0]); e.z = mid(f[1]); e.goal = f; io.to(r.code).emit('captured', p.name, pid);
       }
     }
+    fearTick(r, now);
     for (const t of L.TRG || []) { const w = !r.fired[t.id] && alive.find(([, p]) => Math.hypot(p.x - mid(t.cell[0]), p.z - mid(t.cell[1])) < 3); if (!w) continue;
       r.fired[t.id] = 1; io.to(r.code).emit('ev', { id: t.id, who: w[0] });
       if (t.rush && !L.noEnemy) { const f = r.cells.filter(c => { const d = Math.hypot(mid(c[0]) - w[1].x, mid(c[1]) - w[1].z); return d > 9 && d < 15; }), g = f[rnd(f.length)] || r.cells[0]; e.x = mid(g[0]); e.z = mid(g[1]); e.goal = [cell(w[1].x), cell(w[1].z)]; e.stun = 0; } }

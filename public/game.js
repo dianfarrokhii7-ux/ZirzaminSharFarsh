@@ -111,7 +111,7 @@ S.on('started', d => {
   if (d.npc) { keyMeshes[0].position.y = 2.8; window.npc = mkHuman(0x1b1b1f, { beard: 0x8a8a8a, hair: 0x9a9a9a }); window.npc.position.set(keyMeshes[0].position.x, 0, keyMeshes[0].position.z); scene.add(window.npc); }
   lockers = d.LOCKERS.map(k => { const m = new THREE.Mesh(new THREE.BoxGeometry(1, 2.4, 1), new THREE.MeshStandardMaterial({ color: 0x3a4a3a })); m.position.set(mid(k[0]), 1.2, mid(k[1])); scene.add(m); return m; });
   const ex = new THREE.Mesh(new THREE.BoxGeometry(2.6, 3, .3), new THREE.MeshStandardMaterial({ color: 0x888, emissive: 0x112211 })); ex.position.set(mid(d.EXIT[0]), 1.5, mid(d.EXIT[1])); scene.add(ex);
-  const el = new THREE.PointLight(0x33ff66, 2, 8); el.position.copy(ex.position); scene.add(el); scene.userData.ex = ex; scene.userData.el = el; if (d.ch >= 5) ex.material.color.setHex(d.ch === 6 ? 0x4a3322 : 0x5a6066);
+  const el = new THREE.PointLight(0x33ff66, 2, 8); el.position.copy(ex.position); scene.add(el); scene.userData.ex = ex; scene.userData.el = el; if (d.ch >= 5) ex.material.color.setHex(d.ch === 6 ? 0x4a3322 : d.ch === 7 ? 0x3a3f44 : d.ch === 8 ? 0x2a4a3f : 0x5a6066);
   if (d.shop) prologue(d); if (d.ch >= 4) decor(d);
   (d.PORTALS || []).forEach(pr => pr.forEach(c => { const m = new THREE.Mesh(new THREE.TorusGeometry(.8, .08, 8, 24), new THREE.MeshBasicMaterial({ color: 0xaa44ff })); m.position.set(mid(c[0]), 1.2, mid(c[1])); scene.add(m); const pl = new THREE.PointLight(0xaa44ff, 1.5, 6); pl.position.copy(m.position); scene.add(pl); }));
   scene.userData.flick = new THREE.PointLight(0xff2222, 0, 12); scene.add(scene.userData.flick);
@@ -126,7 +126,7 @@ S.on('started', d => {
   me.x = (d.SP[0] + .5) * C; me.z = (d.SP[1] + .5) * C; me.bat = 1; me.stam = 1; me.fl = true; hidden = false; cap = false; window.LV = d; lastState = { p: {}, e: { x: -99, z: -99 }, k: d.ITEMS.map(() => 0) }; $('#obj').textContent = d.obj;
   const intro = d.intro || ['«این فرش چنده؟»', '«ما فقط ۱۰۰ ریال داریم.»', '«یه فرش کارکرده تو زیرزمین دارم. بیا پایین نشونت بدم.»', 'همه‌چیز سیاه می‌شود...'];
   if (!d.retry) intro.forEach((t, i) => setTimeout(() => say(t, 2400), i * 2600)); if (prevCh === 0 && d.ch === 1) { beep(55, 1.4, .5); flashFade('ناگهان رامبد جوان با دست‌های بزرگش تو را می‌گیرد... عمو پورنگ: «بالاخره یکی دیگه برای آزمایش پیدا شد!» ... در آهنی بسته می‌شود.', 4500); } else flashFade(d.retry ? 'همه گرفتار شدند... فصل از نو شروع می‌شود' : (d.title || ''), 2600);
-  if (d.ch >= 4) startAmb(d); resetX(); if (!isTouch) renderer_lock(); if (!looping) { looping = true; requestAnimationFrame(loop); }
+  startAmb(d); resetX(); dirInit(d); if (!isTouch) renderer_lock(); if (!looping) { looping = true; requestAnimationFrame(loop); }
 });
 const renderer_lock = () => { document.body.addEventListener('click', () => { if (started && !document.pointerLockElement) document.body.requestPointerLock?.(); }); };
 S.on('state', s => { lastState = s; closed = new Set((s.d || []).map(([c, r]) => r * 100 + c)); });
@@ -146,7 +146,7 @@ function scream() {
 }
 S.on('captured', (n, id) => { say(n + ' گرفتار شد!'); if (id === S.id) scream(); else beep(70, .8, .4); });
 S.on('wipe', () => { flashFade('همه گرفتار شدند... فصل از نو شروع می‌شود', 2500); me.x = me.z = 6; hidden = false; });
-S.on('win', () => { started = false; stopAmb(); $('#hud').style.display = 'none'; $('#et').innerHTML = 'ادامه دارد...'; show('end'); setTimeout(() => document.getElementById('cut')?.remove(), 300); });
+S.on('win', () => { started = false; stopAmb(); $('#hud').style.display = 'none'; $('#et').innerHTML = 'ادامه دارد!'; show('end'); setTimeout(() => document.getElementById('cut')?.remove(), 300); });
 const jump = (face, msg, snd = 70) => { const f = $('#fade'); f.style.transition = 'none'; f.style.opacity = 1; f.style.fontSize = '30vmin'; f.textContent = face; beep(snd, .6, .5);
   setTimeout(() => { f.style.opacity = 0; f.textContent = ''; f.style.fontSize = ''; f.style.transition = ''; if (msg) say(msg, 4000); }, 450); };
 const EV = {
@@ -204,7 +204,7 @@ function loop(t) {
   const mine = lastState.p[S.id]; cap = !!(mine && mine.cap); if (cap) { hidden = false; $('#fade').style.opacity = .75; $('#fade').textContent = 'گرفتار شدی... منتظر نجات همتیمی‌ها'; } else if (window._wc) { $('#fade').style.opacity = 0; $('#fade').textContent = ''; } window._wc = cap;
   let ix = (K.KeyD ? 1 : 0) - (K.KeyA ? 1 : 0) + T.mx + (G.mx || 0), iz = (K.KeyS ? 1 : 0) - (K.KeyW ? 1 : 0) + T.my + (G.my || 0);
   const l = Math.hypot(ix, iz); if (l > 1) { ix /= l; iz /= l; }
-  const moving = l > .1 && !cap && !hidden, sprint = (K.ShiftLeft || T.s || G.s) && moving && me.stam > .05 && !me.crouch;
+  const moving = l > .1 && !cap && !hidden && !X.freeze, sprint = (K.ShiftLeft || T.s || G.s) && moving && me.stam > .05 && !me.crouch;
   me.stam = Math.max(0, Math.min(1, me.stam + (sprint ? -.18 : .12) * dt));
   const sp = (me.crouch ? 1.6 : sprint ? 5.2 : 3) * dt;
   if (moving) { const s = Math.sin(me.ry), c = Math.cos(me.ry), dx = (ix * c + iz * s) * sp, dz = (-ix * s + iz * c) * sp;
@@ -223,7 +223,7 @@ function loop(t) {
   cam.position.set(me.x, (me.crouch || hidden ? .9 : 1.6) - (LV.ch === 0 ? Math.max(0, 9 - Math.hypot(me.x - 54, me.z - 6)) / 9 * .8 : 0) + (moving ? Math.sin(t / 140) * .04 : 0), me.z);
   const e = lastState.e, ed = Math.hypot(e.x - me.x, e.z - me.z), shake = ed < 10 ? (10 - ed) / 10 * .03 : 0;
   cam.rotation.set(me.pitch + (Math.random() - .5) * shake, me.ry + (Math.random() - .5) * shake, LV.distort ? Math.sin(t / 900) * .06 : 0);
-  const flick = (e.c && Math.random() < .25) || Math.random() < .003; flash.intensity = me.fl && hasFl && !flick ? 60 : 0;
+  const flick = (e.c && Math.random() < .25) || Math.random() < .003; flash.intensity = me.fl && hasFl && !flick ? (LV.ch === 7 ? 42 : 60) : 0;
   scene.userData.flick.intensity = e.c ? (Math.random() * 1.5) : 0; scene.userData.flick.position.set(me.x, 2.5, me.z);
   enemy.position.x += (e.x - enemy.position.x) * .25; enemy.position.z += (e.z - enemy.position.z) * .25;
   enemy.lookAt(e.x + (e.x - enemy.position.x) * 5, 0, e.z + (e.z - enemy.position.z) * 5 + .001); enemy.userData.arms.forEach((a, i) => a.rotation.x = Math.sin(t / (e.c ? 70 : 300) + i * 3) * .6);
@@ -264,12 +264,6 @@ const noiseBurst = (d = .4, g = .25, f = 1500) => {
 const crackle = () => { noiseBurst(.45, .22, 2600); pbeep(1200, .08, .08); };
 const bell = () => [520, 1040, 1560].forEach((f, i) => pbeep(f, 2.4 - i * .6, .08 / (i + 1), Math.random() * 1.2 - .6));
 const sting = (g = .6) => { noiseBurst(.9, g, 1800); pbeep(900, .8, .25, 0, 'sawtooth'); pbeep(60, .9, .5, 0, 'sawtooth'); navigator.vibrate?.([150, 50, 250]); };
-function startAmb(d) { // low drone (ch4/5) or wind (ch6)
-  stopAmb(); if (!AC) return; const n = AC.sampleRate * 2, b = AC.createBuffer(1, n, AC.sampleRate), a = b.getChannelData(0); for (let i = 0; i < n; i++) a[i] = Math.random() * 2 - 1;
-  const s = AC.createBufferSource(), f = AC.createBiquadFilter(), g = AC.createGain(), lfo = AC.createOscillator(), lg = AC.createGain(); s.buffer = b; s.loop = true; f.type = 'lowpass'; f.frequency.value = d.ch === 6 ? 520 : 200;
-  g.gain.value = d.ch === 6 ? .12 : .05; lfo.frequency.value = d.ch === 6 ? .23 : .12; lg.gain.value = g.gain.value * .8; lfo.connect(lg).connect(g.gain); s.connect(f).connect(g).connect(AC.destination); s.start(); lfo.start(); amb = { s, lfo };
-}
-function stopAmb() { if (amb) { try { amb.s.stop(); amb.lfo.stop(); } catch (e) {} amb = null; } }
 function resetX() { X.ph = 14 + Math.random() * 10; X.gs = 20 + Math.random() * 10; X.bl = 6 + Math.random() * 6; X.tvOn = 0; }
 // ---------- geometry helpers
 const solidAt = (x, z) => solid(x, z);
@@ -330,6 +324,31 @@ function decor(d) { // props that make each new chapter look different; collisio
     M.forEach((row, r) => [...row].forEach((ch, c) => { if (ch !== '.' || P() > .12) return; const m = cmat(r + c); m.color.setHex(0x777777); const q = mk(new THREE.PlaneGeometry(2.4, 3.6), m, (c + .5) * C + (P() - .5) * 1.5, .03, (r + .5) * C + (P() - .5) * 1.5); q.rotation.x = -Math.PI / 2; q.rotation.z = P() * 3; }));
     ud.fix = []; M.forEach((row, r) => [...row].forEach((ch, c) => { if (ch !== '.' || P() > .3) return; const m = new THREE.MeshBasicMaterial({ color: 0xaa9a70 }); mk(new THREE.BoxGeometry(1.2, .1, .25), m, (c + .5) * C, 3.12, (r + .5) * C); ud.fix.push({ m, p: P() * 20 }); }));
     ud.tvs = tvs; ud.lamp = new THREE.PointLight(0xffd9a0, .5, 14); scene.add(ud.lamp);
+  }
+  if (d.ch === 7) { // forgotten floor: old rug storage, cracked walls, empty rooms with chairs, security cameras, broken elevator, yellow/red lights
+    const wood = MT(0x2a2018), metal = MT(0x2c3036, { metalness: .5, roughness: .55 }), dk = MT(0x151515), [cc, cx] = cv2(128, 256); cx.strokeStyle = '#050403'; cx.lineWidth = 3; cx.beginPath(); let px = 64, py = 0; cx.moveTo(px, py); while (py < 256) { px += (P() - .5) * 34; py += 16 + P() * 22; cx.lineTo(px, py); } cx.stroke();
+    const crack = new THREE.MeshBasicMaterial({ map: toTex(cc), transparent: true, depthWrite: false });
+    ud.cams = []; ud.fix7 = []; ud.lamp = new THREE.PointLight(0xffd9a0, .5, 14); scene.add(ud.lamp); ud.col = new THREE.PointLight(0xffb040, 0, 16); scene.add(ud.col);
+    const chair = (x, z) => { const g = new THREE.Group(), add = (geo, px_, py_, pz_) => { const m = new THREE.Mesh(geo, wood); m.position.set(px_, py_, pz_); g.add(m); }; add(new THREE.BoxGeometry(.5, .06, .5), 0, .45, 0); add(new THREE.BoxGeometry(.5, .6, .06), 0, .78, -.22); [[-.2, -.2], [.2, -.2], [-.2, .2], [.2, .2]].forEach(([a, b]) => add(new THREE.BoxGeometry(.05, .45, .05), a, .22, b)); g.position.set(x, 0, z); g.rotation.y = P() * 6; scene.add(g); };
+    sp.forEach((s, i) => { const r = P(), [x, z] = inw(s, .4);
+      if (r < .2) { const m = mk(new THREE.CylinderGeometry(.32, .32, 2.5, 14), cmat(i), x, 1.2, z); m.rotation.z = (P() - .5) * .2; m.rotation.x = (P() - .5) * .2; }
+      else if (r < .32) { const [qx, qz] = inw(s, .02); mk(new THREE.PlaneGeometry(1.3, 2.6), crack, qx, 1.5, qz, s.ry); }
+      else if (r < .38) { const [qx, qz] = inw(s, .8); chair(qx, qz); }
+      else if (r < .45) { const [qx, qz] = inw(s, .3), g = new THREE.Group(), led = new THREE.Mesh(new THREE.SphereGeometry(.04, 6, 6), new THREE.MeshBasicMaterial({ color: 0x220000 })); const body = new THREE.Mesh(new THREE.BoxGeometry(.3, .25, .5), dk); led.position.set(0, .1, .27); g.add(body, led); g.position.set(qx, 2.85, qz); scene.add(g); ud.cams.push({ g, led }); } });
+    M.forEach((row, r) => [...row].forEach((ch, c) => { if (ch !== '.' || P() > .25) return; const col = P() < .35 ? 0xff2a1a : 0xffc040, m = new THREE.MeshBasicMaterial({ color: col }); mk(new THREE.BoxGeometry(1.1, .1, .25), m, (c + .5) * C, 3.12, (r + .5) * C); ud.fix7.push({ m, c: new THREE.Color(col), p: P() * 20 }); }));
+    const el = sp.filter(s => s.c + s.r > 10), s = el[el.length * P() | 0]; if (s) { const [x, z] = inw(s, .15); mk(new THREE.BoxGeometry(2.4, 3, .2), metal, x, 1.5, z, s.ry); const [dx_, dz_] = inw(s, .27); [-.55, .55].forEach(o => { const m = mk(new THREE.BoxGeometry(1.05, 2.8, .1), dk, dx_ + (s.dz ? o : 0), 1.4, dz_ + (s.dx ? o : 0), s.ry); }); ud.lift = { x: s.x, z: s.z }; }
+  }
+  if (d.ch === 8) { // the real lab: glass tubes, consoles, wall monitors, machines, overhead pipes, pulsing coloured light
+    const glass = new THREE.MeshStandardMaterial({ color: 0x66ffaa, emissive: 0x0a3a1a, transparent: true, opacity: .35, roughness: .1 }), metal = MT(0x30353a, { metalness: .6, roughness: .5 }), dk = MT(0x151a18), pm = MT(0x5a5f66, { metalness: .6, roughness: .45 }), pg = new THREE.CylinderGeometry(.12, .12, C, 8), scrM = new THREE.MeshBasicMaterial({ color: 0x33ff88 }), led = new THREE.MeshBasicMaterial({ color: 0xff2020 });
+    const [mc, mx] = cv2(256, 160); mx.fillStyle = '#021208'; mx.fillRect(0, 0, 256, 160); mx.fillStyle = '#4f8'; mx.font = 'bold 26px monospace'; mx.fillText('SUBJECT: PLAYER', 14, 60); mx.fillText('PROJECT R', 14, 100); mx.fillStyle = '#e44'; mx.fillText('● REC', 14, 140); const monM = new THREE.MeshBasicMaterial({ map: toTex(mc) });
+    ud.fix7 = []; ud.lamp = new THREE.PointLight(0xffd9a0, .4, 14); scene.add(ud.lamp); ud.col = new THREE.PointLight(0x33ff88, 0, 16); scene.add(ud.col);
+    M.forEach((row, r) => [...row].forEach((ch, c) => { if (ch !== '.') return; if (P() < .3) { const ew = M[r][c + 1] === '.' || M[r][c - 1] === '.', o = (P() < .5 ? -1 : 1) * 1.2, m = mk(pg, pm, (c + .5) * C + (ew ? 0 : o), 2.85, (r + .5) * C + (ew ? o : 0)); if (ew) m.rotation.z = Math.PI / 2; else m.rotation.x = Math.PI / 2; }
+      if (P() < .22) { const col = P() < .5 ? 0xcfe8ff : 0x66ffaa, m = new THREE.MeshBasicMaterial({ color: col }); mk(new THREE.BoxGeometry(1.1, .1, .25), m, (c + .5) * C, 3.12, (r + .5) * C); ud.fix7.push({ m, c: new THREE.Color(col), p: P() * 20 }); } }));
+    sp.forEach(s => { const r = P();
+      if (r < .14) { const [x, z] = inw(s, .8); mk(new THREE.CylinderGeometry(.5, .5, 2.3, 16), glass, x, 1.2, z); mk(new THREE.CylinderGeometry(.6, .6, .15, 16), metal, x, .08, z); }
+      else if (r < .26) { const [x, z] = inw(s, .5), [sx, sz] = inw(s, .82); mk(new THREE.BoxGeometry(1.3, 1, .6), dk, x, .5, z, s.ry); mk(new THREE.PlaneGeometry(1, .5), scrM, sx, 1.05, sz, s.ry); }
+      else if (r < .34) { const [x, z] = inw(s, .03); mk(new THREE.PlaneGeometry(1.7, 1.06), monM, x, 1.9, z, s.ry); }
+      else if (r < .42) { const [x, z] = inw(s, .7), [lx, lz] = inw(s, 1.02); mk(new THREE.BoxGeometry(1.5, 1.7, 1), metal, x, .85, z, s.ry); mk(new THREE.SphereGeometry(.06, 6, 6), led, lx, 1.5, lz); } });
   }
 }
 const syncDoors = () => { // closed corridor doors (chapter 5)
@@ -420,11 +439,12 @@ async function runCut(ch) {
   await wait(30); o.style.opacity = 1;
   const V = h => { o.querySelector('#cv').innerHTML = h; }, T = (t, ms, css = '') => { const e = o.querySelector('#ct'); e.style.cssText = css; e.innerHTML = t; return wait(ms); };
   try { await CUTS[ch]?.({ T, V }); } catch (e) {}
-  S.emit('cutdone'); setTimeout(() => { if (ch < 6 && o.isConnected) o.remove(); }, 9000); // the next chapter's 'started' event fades it out
+  S.emit('cutdone'); setTimeout(() => { if (ch < 8 && o.isConnected) o.remove(); }, 9000); // the next chapter's 'started' event fades it out
 }
 S.on('cut', ch => runCut(ch));
 function extra(t, dt) { // per-frame logic for chapters 4-6
   for (let i = FX.length - 1; i >= 0; i--) if (FX[i](t, dt) === false) FX.splice(i, 1);
+  fearTick(t, dt);
   const ch = LV.ch; if (ch < 4) return; const ud = scene.userData;
   syncDoors();
   if (ud.lamp) { ud.lamp.position.set(me.x, 2.8, me.z); ud.lamp.intensity = LV.lit ? 0 : (Math.sin(t / 130) + Math.sin(t / 47) > 1.2 ? 0 : .35 + Math.random() * .5); }
@@ -442,3 +462,213 @@ function phantom() { // Rambod far away at the end of a corridor — he vanishes
   const t0 = performance.now(); FX.push(() => { g.lookAt(me.x, 0, me.z); g.visible = Math.random() > .08; if (performance.now() - t0 > 3200 || Math.hypot(g.position.x - me.x, g.position.z - me.z) < 8) { scene.remove(g); return false; } return true; });
 }
 function ghostSteps() { say('صدای قدم‌هایی از پشت سرت شنیده می‌شود... ولی هیچ‌کس نیست.', 4200); for (let i = 0; i < 10; i++) setTimeout(() => pbeep(70 + (i % 2) * 8, .1, .12 + i * .035, 0, 'triangle'), 400 + i * (520 - i * 22)); }
+
+// =====================================================================
+// NIGHTMARE EXPANSION PART 1 — chapters 7-8 + PROFESSIONAL FEAR SYSTEM (all chapters)
+// =====================================================================
+const INT = { 1: .15, 2: .25, 3: .35, 4: .45, 5: .55, 6: .7, 7: .85, 8: 1 }; // fear intensity grows chapter by chapter
+const AU = { bus: null, sfx: null, mus: null, nodes: [], on: false, h: false, bt: 0, stp: 0, one: 6, mt: 0, pb: 0, pc: 0 }, DIR = { spots: [], used: {}, hist: [], vis: new Map(), itm: {}, writes: [] };
+const rr = (a, b) => a + Math.random() * (b - a), pickOne = a => a[Math.random() * a.length | 0], nowS = () => performance.now() / 1000;
+const PIN = document.createElement('div'); PIN.style.cssText = 'position:absolute;bottom:14px;left:14px;display:none;padding:6px 14px;background:#000a;border:1px solid #6f8;color:#6f8;font:700 20px Vazirmatn,monospace;direction:rtl'; $('#hud').appendChild(PIN);
+S.on('say', t => { const m = /رمز[^۰-۹]{0,40}([۰-۹]{4})/.exec(t); if (m) { PIN.textContent = 'رمز: ' + m[1]; PIN.style.display = 'block'; } });
+S.on('cut', () => { X.cut = true; stopAmb(); });
+// ---------- audio engine: ambience bus, breathing, 3D positional sounds, dynamic music
+const NBUF = () => AU.nb || (AU.nb = (() => { const n = AC.sampleRate * 2 | 0, b = AC.createBuffer(1, n, AC.sampleRate), a = b.getChannelData(0); for (let i = 0; i < n; i++) a[i] = Math.random() * 2 - 1; return b; })());
+function startAmb(d) {
+  stopAmb(); if (!AC || d.ch < 1) return; AU.on = true; AU.nb = null;
+  const mk = () => { const g = AC.createGain(); g.connect(AC.destination); return g; }, keep = n => (AU.nodes.push(n), n);
+  AU.bus = mk(); AU.sfx = mk(); AU.mus = mk(); AU.h = false; AU.bt = 0; AU.stp = 0; AU.one = rr(5, 9); AU.mt = 0;
+  const ch = d.ch, wind = ch === 6 || ch === 7;
+  { const s = keep(AC.createBufferSource()), f = AC.createBiquadFilter(), g = AC.createGain(), lfo = keep(AC.createOscillator()), lg = AC.createGain(); s.buffer = NBUF(); s.loop = true; f.type = 'lowpass'; f.frequency.value = wind ? 520 : 200;
+    g.gain.value = wind ? .12 : .05; lfo.frequency.value = wind ? .23 : .12; lg.gain.value = g.gain.value * .8; lfo.connect(lg).connect(g.gain); s.connect(f).connect(g).connect(AU.bus); s.start(); lfo.start(); }
+  if (ch === 5 || ch >= 7) { const o = keep(AC.createOscillator()), o2 = keep(AC.createOscillator()), hf = AC.createBiquadFilter(), hg = AC.createGain(); o.type = 'sawtooth'; o.frequency.value = ch === 8 ? 50 : 43; o2.type = 'square'; o2.frequency.value = ch === 8 ? 100.4 : 86;
+    hf.type = 'lowpass'; hf.frequency.value = ch === 8 ? 260 : 150; hg.gain.value = ch === 8 ? .05 : .035; o.connect(hf); o2.connect(hf); hf.connect(hg).connect(AU.bus); o.start(); o2.start(); }
+  { const b = keep(AC.createBufferSource()), bf = AC.createBiquadFilter(), bg = AC.createGain(); b.buffer = NBUF(); b.loop = true; bf.type = 'bandpass'; bf.frequency.value = 700; bf.Q.value = .7; bg.gain.value = 0; b.connect(bf).connect(bg).connect(AU.sfx); b.start(); AU.bg = bg; }
+  // music layers: pad (explore) / dissonant tremolo (enemy near) / pulse drone (chase)
+  const padG = AC.createGain(), tenG = AC.createGain(), chG = AC.createGain(); padG.gain.value = 0; tenG.gain.value = 0; chG.gain.value = 0;
+  const pf = AC.createBiquadFilter(); pf.type = 'lowpass'; pf.frequency.value = 380;
+  [[55, 'sawtooth'], [55.45, 'sawtooth'], [82.4, 'sine'], [110.3, 'sine']].forEach(([fr, ty]) => { const o = keep(AC.createOscillator()); o.type = ty; o.frequency.value = fr; o.connect(pf); o.start(); }); pf.connect(padG).connect(AU.mus);
+  const tf = AC.createBiquadFilter(); tf.type = 'lowpass'; tf.frequency.value = 1100; const tr = keep(AC.createOscillator()), trg = AC.createGain(), tmod = AC.createGain(); tr.frequency.value = 4.6; trg.gain.value = .5; tmod.gain.value = .5; tr.connect(trg).connect(tmod.gain);
+  [[466.16, 'sawtooth'], [493.88, 'sawtooth'], [233.08, 'triangle']].forEach(([fr, ty]) => { const o = keep(AC.createOscillator()); o.type = ty; o.frequency.value = fr; o.connect(tf); o.start(); }); tf.connect(tmod).connect(tenG).connect(AU.mus); tr.start();
+  const cf = AC.createBiquadFilter(); cf.type = 'lowpass'; cf.frequency.value = 700; const co = keep(AC.createOscillator()), co2 = keep(AC.createOscillator()); co.type = co2.type = 'sawtooth'; co.frequency.value = 77.8; co2.frequency.value = 82.4; co.connect(cf); co2.connect(cf); cf.connect(chG).connect(AU.mus); co.start(); co2.start();
+  AU.lay = { pad: padG, ten: tenG, ch: chG };
+}
+function stopAmb() { AU.on = false; AU.nodes.forEach(n => { try { n.stop(); } catch (e) {} }); AU.nodes = []; [AU.bus, AU.sfx, AU.mus].forEach(g => { try { g && g.disconnect(); } catch (e) {} }); AU.bus = AU.sfx = AU.mus = AU.bg = AU.lay = null; if (AU.siren) { try { AU.siren.stop(); } catch (e) {} AU.siren = null; } }
+function listen() { if (!AC) return; const L = AC.listener, fx = -Math.sin(me.ry), fz = -Math.cos(me.ry);
+  if (L.positionX) { L.positionX.value = me.x; L.positionY.value = 1.6; L.positionZ.value = me.z; L.forwardX.value = fx; L.forwardY.value = 0; L.forwardZ.value = fz; L.upX.value = 0; L.upY.value = 1; L.upZ.value = 0; } else { L.setPosition(me.x, 1.6, me.z); L.setOrientation(fx, 0, fz, 0, 1, 0); } }
+function src3(x, z, y, f) { if (!AC || !AU.on || !AU.sfx) return; const p = AC.createPanner(); p.panningModel = 'HRTF'; p.distanceModel = 'inverse'; p.refDistance = 2.5; p.maxDistance = 80; p.rolloffFactor = 1.2;
+  if (p.positionX) { p.positionX.value = x; p.positionY.value = y; p.positionZ.value = z; } else p.setPosition(x, y, z); p.connect(AU.sfx); f(p, AC.currentTime); }
+const envl = (g, t0, a, d, v) => { g.gain.setValueAtTime(.0001, t0); g.gain.exponentialRampToValueAtTime(v, t0 + a); g.gain.exponentialRampToValueAtTime(.0001, t0 + a + d); };
+function osc3(dest, type, f0, f1, d, v, t0 = AC.currentTime) { const o = AC.createOscillator(), g = AC.createGain(); o.type = type; o.frequency.setValueAtTime(f0, t0); if (f1) o.frequency.exponentialRampToValueAtTime(f1, t0 + d); envl(g, t0, .01, d, v); o.connect(g).connect(dest); o.start(t0); o.stop(t0 + d + .05); }
+function nz3(dest, d, v, f, q = 1, type = 'bandpass', t0 = AC.currentTime) { const s = AC.createBufferSource(), fl = AC.createBiquadFilter(), g = AC.createGain(); s.buffer = NBUF(); s.loop = true; fl.type = type; fl.frequency.value = f; fl.Q.value = q; envl(g, t0, d * .08, d * .9, v); s.connect(fl).connect(g).connect(dest); s.start(t0); s.stop(t0 + d + .05); }
+const S3 = { // positional (HRTF) sounds: they really come from where the source is
+  step: (x, z, v = .8, run = false) => src3(x, z, .2, (d, t) => { nz3(d, .09, v, run ? 520 : 300, .8, 'lowpass', t); osc3(d, 'sine', 90, 45, .14, v * .6, t); }),
+  door: (x, z, v = 1) => src3(x, z, 1.5, (d, t) => { [150, 233, 377].forEach((f, i) => osc3(d, 'square', f, f * .9, .8 - i * .15, .12 * v, t)); nz3(d, .5, .5 * v, 900, .7, 'bandpass', t); }),
+  creak: (x, z, v = 1) => src3(x, z, 1.4, (d, t) => { osc3(d, 'sawtooth', 160, 120, 1.3, .08 * v, t); osc3(d, 'sawtooth', 166, 125, 1.3, .06 * v, t); nz3(d, 1.2, .1 * v, 1400, 5, 'bandpass', t); }),
+  drag: (x, z, v = 1) => src3(x, z, .3, (d, t) => { nz3(d, 1.9, .6 * v, 180, 2, 'bandpass', t); osc3(d, 'sawtooth', 48, 40, 1.9, .1 * v, t); }),
+  mach: (x, z, v = 1) => src3(x, z, 2.5, (d, t) => { osc3(d, 'sawtooth', 52, 47, 2.6, .22 * v, t); osc3(d, 'square', 104, 98, 2.4, .05 * v, t); nz3(d, 1.9, .15 * v, 400, 1, 'lowpass', t); }),
+  clank: (x, z, v = 1) => src3(x, z, 2.4, (d, t) => { [420, 663, 1190].forEach((f, i) => osc3(d, 'triangle', f, f * .97, .5 - i * .1, .1 * v, t + i * .02)); }),
+  growl: (x, z, v = 1) => src3(x, z, 1.8, (d, t) => { osc3(d, 'sawtooth', 62, 48, 1.5, .35 * v, t); osc3(d, 'sawtooth', 65, 50, 1.5, .3 * v, t); nz3(d, 1.4, .25 * v, 260, 3, 'bandpass', t); }),
+  whisper: (x, z, v = 1) => src3(x, z, 1.6, (d, t) => { for (let i = 0; i < 4; i++) nz3(d, .35, .25 * v, 2400 + i * 700, 6, 'bandpass', t + i * .28); }),
+  store: (x, z) => src3(x, z, 3.2, (d, t) => { const f = AC.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 500; f.connect(d); [196, 247, 294].forEach((fr, i) => osc3(f, 'triangle', fr, fr, 2.4, .06, t + i * .5)); nz3(f, 1.9, .08, 600, .6, 'bandpass', t); })
+};
+function audioTick(dt, ed, chasing, live) {
+  if (!AC || !AU.on || !AU.lay) return; const e = lastState.e, hushed = performance.now() < X.hushUntil, ct = AC.currentTime, I = INT[LV.ch] || .3;
+  if (hushed !== AU.h) { AU.h = hushed; [AU.bus, AU.sfx, AU.mus].forEach(g => { g.gain.cancelScheduledValues(ct); g.gain.setTargetAtTime(hushed ? .0001 : 1, ct, hushed ? .12 : 1.8); }); } // sudden silence, then the world slowly comes back
+  AU.mt -= dt; if (AU.mt <= 0) { AU.mt = .25; const near = live && ed < 16, set = (g, v, tc) => g.gain.setTargetAtTime(v, ct, tc), L = AU.lay;
+    set(L.pad, .05 + .04 * I, 1.5); set(L.ten, chasing ? .05 : near ? Math.min(.14, (16 - ed) / 16 * .16) : 0, 1.2); set(L.ch, chasing ? .2 : 0, chasing ? .3 : 1.5); }
+  if (chasing && !hushed) { AU.pb -= dt; if (AU.pb <= 0) { AU.pb = 60 / (132 + Math.max(0, 1 - ed / 22) * 56) / 2; AU.pc++; const t0 = AC.currentTime;
+    if (AU.pc % 2 === 0) osc3(AU.mus, 'sine', 78, 36, .16, .5, t0); else nz3(AU.mus, .05, .14, 6000, 1, 'highpass', t0);
+    if (AU.pc % 8 === 5) { osc3(AU.mus, 'sawtooth', 311, 300, .22, .1, t0); osc3(AU.mus, 'sawtooth', 329.6, 320, .22, .1, t0); } } }
+  AU.bt -= dt; if (AU.bt <= 0 && AU.bg) { const hard = me.stam < .6 || (live && ed < 10) || hidden; AU.bt = hard ? 1.1 : 3.4; const v = hard ? .13 : .035; AU.bg.gain.cancelScheduledValues(ct); AU.bg.gain.setValueAtTime(.0001, ct); AU.bg.gain.linearRampToValueAtTime(v, ct + AU.bt * .3); AU.bg.gain.linearRampToValueAtTime(.0001, ct + AU.bt * .85); }
+  const pe = X.pe || { x: enemy.position.x, z: enemy.position.z }, mv = Math.hypot(enemy.position.x - pe.x, enemy.position.z - pe.z) / Math.max(dt, .001); X.pe = { x: enemy.position.x, z: enemy.position.z };
+  if (live && mv > .8 && ed < 34 && !hushed) { AU.stp -= dt; if (AU.stp <= 0) { AU.stp = e.c ? .3 : .6; S3.step(enemy.position.x, enemy.position.z, e.c ? 1.4 : 1, !!e.c); } } // footsteps come from his real position
+  AU.one -= dt; if (AU.one <= 0 && !hushed) { AU.one = rr(9, 20) - 6 * I; const a = Math.random() * 6.283, r = rr(14, 34), x = me.x + Math.cos(a) * r, z = me.z + Math.sin(a) * r, k = Math.random();
+    if (k < .3) S3.door(x, z, .8); else if (k < .5) S3.mach(x, z, 1.2); else if (k < .7) S3.clank(x, z, .9); else if (k < .85) S3.drag(x, z, .8); else S3.step(x, z, .7); } // far-away sounds
+}
+// ---------- helpers for scares
+const behindPos = d => [me.x + Math.sin(me.ry) * d, me.z + Math.cos(me.ry) * d];
+function lightsOut(ms) { X.dark = nowS() + ms / 1000; me.fl = false; setTimeout(() => { me.fl = true; }, ms); }
+function preScare(ms, fn) { const sc = scene; X.hushUntil = performance.now() + ms + 700; setTimeout(() => { if (scene === sc && started && !cap) fn(); }, ms); } // silence first, then the scare
+function freeDir(min, lo = 0, hi = 8, cone = .12) { const o = []; for (let k = -hi; k <= hi; k++) { if (Math.abs(k) < lo) continue; const a = me.ry + k * cone, dx = -Math.sin(a), dz = -Math.cos(a), f = rayFree(me.x, me.z, dx, dz, 24); if (f >= min) o.push({ dx, dz, f: Math.min(f - 1, 18) }); } return o.length ? pickOne(o) : null; }
+function spotAt(lo, hi, front = false) { return pickOne2((DIR.spots || []).filter(s => { const dx = s.x - me.x, dz = s.z - me.z, d = Math.hypot(dx, dz); if (d < lo || d > hi) return false;
+  if (front && (dx * -Math.sin(me.ry) + dz * -Math.cos(me.ry)) / d < .25) return false; return rayFree(me.x, me.z, dx / d, dz / d, d + .5) >= d - 2.2; })); }
+const pickOne2 = a => a.length ? pickOne(a) : null;
+function stepsBehind(n = 8, d0 = 9, d1 = 2.2, gap = 480) { for (let i = 0; i < n; i++) setTimeout(() => { const [x, z] = behindPos(d0 + (d1 - d0) * i / (n - 1)); S3.step(x, z, .9); }, i * gap); }
+function stillBehind() { say('صدای قدم‌هایی از پشت سر... نزدیک‌تر می‌شود.', 3200); stepsBehind(); setTimeout(() => { X.hushUntil = performance.now() + 1800; }, 8 * 480); setTimeout(() => EV.behind(), 8 * 480 + 200); }
+function shTex() { if (!DIR.shT) { const [c, x] = cv2(64, 160); x.fillStyle = '#000'; x.beginPath(); x.arc(32, 22, 14, 0, 7); x.fill(); x.fillRect(18, 38, 28, 70); x.fillRect(22, 108, 8, 50); x.fillRect(34, 108, 8, 50); x.fillRect(6, 40, 10, 60); x.fillRect(48, 40, 10, 60); DIR.shT = new THREE.CanvasTexture(c); } return DIR.shT; }
+function shadowCross() { const r = freeDir(7, 4, 8); if (!r) return; const m = new THREE.Mesh(new THREE.PlaneGeometry(.9, 2.2), new THREE.MeshBasicMaterial({ map: shTex(), transparent: true, depthWrite: false, fog: false })); m.position.set(me.x + r.dx * r.f * .8, 1.1, me.z + r.dz * r.f * .8); scene.add(m);
+  S3.whisper(m.position.x, m.position.z, .8); let seen = 0, age = 0;
+  FX.push((_, dt) => { age += dt; m.rotation.y = Math.atan2(me.x - m.position.x, me.z - m.position.z); const sx = m.position.x - me.x, sz = m.position.z - me.z, c = (sx * -Math.sin(me.ry) + sz * -Math.cos(me.ry)) / (Math.hypot(sx, sz) || 1);
+    if (c > .93) seen += dt; if (seen > .35 || age > 4.5) { scene.remove(m); pbeep(60, .3, .15); return false; } return true; }); } // vanishes when you look straight at it
+function rugFall(real) {
+  const s = spotAt(2.6, 8); if (!s) return; const mat = cmat((DIR.rc = (DIR.rc || 0) + 1)); mat.side = THREE.DoubleSide;
+  const og = new THREE.Group(), ig = new THREE.Group(), p = new THREE.Mesh(new THREE.PlaneGeometry(1.7, 2.6), mat); og.position.set(s.x - s.dx * .5, 0, s.z - s.dz * .5); og.rotation.y = s.ry; p.position.y = 1.3; ig.add(p); og.add(ig); ig.rotation.x = .07; scene.add(og);
+  const t0 = performance.now(); let fell = 0, voiced = 0; say(real ? 'یکی از فرش‌های تکیه‌داده به دیوار آرام روی زمین می‌افتد...' : 'فرشی از دیوار سر می‌خورد...', 3000);
+  FX.push((_, dt) => { const a = (performance.now() - t0) / 1000;
+    if (a < 1) { ig.rotation.x = .07 + Math.sin(a * 9) * .01; return true; }
+    if (a < 1.5) { const k = (a - 1) / .5; ig.rotation.x = .07 + (Math.PI / 2 - .07) * k * k; return true; }
+    if (!fell) { fell = 1; ig.rotation.x = Math.PI / 2; S3.step(og.position.x, og.position.z, 2.2); noiseBurst(.25, .15, 300); }
+    if (a > 2.4 && a < 5) { const dx = me.x - og.position.x, dz = me.z - og.position.z, d = Math.hypot(dx, dz) || 1, v = 1.5 * dt; if (d > 1.8 && !solidAt(og.position.x + dx / d * (v + .6), og.position.z + dz / d * (v + .6))) { og.position.x += dx / d * v; og.position.z += dz / d * v; }
+      if (!voiced && real && a > 3.2) { voiced = 1; S3.growl(og.position.x, og.position.z, 1.4); say('از پشت فرش صدای رامبد جوان شنیده می‌شود... فرار کن!', 3500); } }
+    if (a > 12) { scene.remove(og); return false; } return true; });
+}
+function tvProp() {
+  const s = spotAt(4, 13, true) || spotAt(3, 13); if (!s) return; const MTd = new THREE.MeshStandardMaterial({ color: 0x1a1612, roughness: .9 }), [cc, cx] = cv2(128, 96), tx = toTex(cc);
+  const put = (g, m, k, y) => { const o = new THREE.Mesh(g, m); o.position.set(s.x - s.dx * k, y, s.z - s.dz * k); o.rotation.y = s.ry; scene.add(o); return o; };
+  const body = put(new THREE.BoxGeometry(1.1, .9, .8), MTd, .55, .95), base = put(new THREE.BoxGeometry(1.2, .5, .9), MTd, .55, .25), scr = put(new THREE.PlaneGeometry(.82, .62), new THREE.MeshBasicMaterial({ map: tx, color: 0x888888 }), .96, .98), word = pickOne(['برنگرد', 'پشت سرته', 'R', 'کمک']), t0 = performance.now();
+  crackle(); say('یک تلویزیون قدیمی ناگهان روشن می‌شود...', 2800);
+  FX.push(() => { const a = (performance.now() - t0) / 1000; cx.fillStyle = '#0a140c'; cx.fillRect(0, 0, 128, 96); for (let i = 0; i < 160; i++) { cx.fillStyle = `rgba(${150 + Math.random() * 100 | 0},255,${160 + Math.random() * 90 | 0},${Math.random() * .5})`; cx.fillRect(Math.random() * 128, Math.random() * 96, 2 + Math.random() * 12, 1); }
+    if (a > 2.5 && Math.random() < .7) { cx.fillStyle = '#e44'; cx.font = 'bold 34px Vazirmatn, Tahoma'; cx.textAlign = 'center'; cx.fillText(word, 64, 56); } tx.needsUpdate = true; scr.material.color.setScalar(.5 + Math.random() * .5);
+    if (a > 14) { [body, base, scr].forEach(o => scene.remove(o)); return false; } return true; });
+}
+const WR = ['برنگرد.', 'اون پشتته.', 'چراغ رو خاموش نکن.', 'تو اولین نفر نیستی.', 'صدات رو شنیدم.', 'پشت سرته!', 'نگاهش نکن.', 'هنوز اینجایی؟'];
+function writeWall() { const s = spotAt(3, 12); if (!s) return; const [c, x] = cv2(256, 96); x.fillStyle = '#8a0c0c'; x.font = 'bold 54px Vazirmatn, Tahoma'; x.textAlign = 'center'; x.shadowColor = '#500'; x.shadowBlur = 6; x.fillText(pickOne(WR), 128, 62);
+  for (let i = 0; i < 6; i++) x.fillRect(30 + Math.random() * 196, 66, 2, 8 + Math.random() * 20);
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(1.9, .72), new THREE.MeshBasicMaterial({ map: toTex(c), transparent: true })); m.position.set(s.x, 1.7, s.z); m.rotation.y = s.ry; scene.add(m); DIR.writes.push(m); if (DIR.writes.length > 10) scene.remove(DIR.writes.shift()); }
+const PA = ['عمو پورنگ (از بلندگو): «هر قدمت رو می‌شنوم...»', 'عمو پورنگ (از بلندگو): «فکر می‌کنی تنهایی؟»', 'عمو پورنگ (از بلندگو): «رامبد گرسنه شده...»', 'پژمان جمشیدی (از بلندگو): «اگه صدای قدم شنیدی، نایست.»', 'پژمان جمشیدی (از بلندگو): «به عمو پورنگ اعتماد نکن... به من هم.»', 'پژمان جمشیدی (از بلندگو): «من نمی‌خواستم این‌طوری بشه.»'];
+function paLine() { DIR.pa = DIR.pa || []; let c = PA.filter(x => !DIR.pa.includes(x)); if (!c.length) { DIR.pa = []; c = PA; } const l = pickOne(c); DIR.pa.push(l); crackle(); bell(); say(l, 5200); }
+const SCARES = [ // full jump scares: always preceded by silence, never repeated back to back
+  { id: 'face', i: .35, w: 1, fn: () => preScare(2400, () => scareFace(900)) },
+  { id: 'lights', i: .1, w: 1.4, fn: () => preScare(1600, () => { lightsOut(1700); const [x, z] = behindPos(4); S3.whisper(x, z, 1.2); setTimeout(() => { if (Math.random() < .6) phantom(); }, 1800); }) },
+  { id: 'behind', i: .2, w: 1.2, fn: stillBehind },
+  { id: 'shadow', i: .1, w: 1.3, ok: () => !!freeDir(7, 4, 8), fn: shadowCross },
+  { id: 'slam', i: .1, w: 1.2, fn: () => preScare(1500, () => { const [x, z] = behindPos(5); S3.door(x, z, 1.6); beep(55, .5, .5); lightsOut(900); say('دری با ضربه از پشت سرت بسته شد...', 3000); }) },
+  { id: 'rug', i: .3, w: 1, ok: () => !!spotAt(2.6, 8), fn: () => rugFall(false) },
+  { id: 'tvs', i: .4, w: .9, ok: () => !!spotAt(3, 13), fn: tvProp },
+  { id: 'phant', i: .25, w: 1, ok: () => !!freeDir(12, 0, 4), fn: () => phantom() }
+];
+const WEIRD = [ // quieter unpredictable events
+  { id: 'wlights', i: .1, w: 1, fn: () => { lightsOut(1300); const [x, z] = behindPos(6); S3.creak(x, z, 1); } },
+  { id: 'tv', i: .2, w: 1, ok: () => !!spotAt(3, 13), fn: tvProp },
+  { id: 'olddoor', i: .15, w: 1, fn: () => { const a = Math.random() * 6.283, r = rr(7, 15); S3.creak(me.x + Math.cos(a) * r, me.z + Math.sin(a) * r, 1.4); say('دری قدیمی آهسته باز شد...', 2600); } },
+  { id: 'writing', i: .1, w: 1.3, ok: () => !!spotAt(3, 12), fn: writeWall },
+  { id: 'pa', i: .2, w: 1, fn: paLine },
+  { id: 'msg', i: .15, w: .7, fn: () => say(pickOne(['پشت سرت.', 'کسی دارد نفس می‌کشد...', 'چراغ‌قوه را خاموش نکن.', 'صدای قدم‌هایت دو تا شد.']), 2600) },
+  { id: 'steps', i: .1, w: .8, fn: () => { say('صدای قدم‌هایی نزدیک می‌شود... ولی کسی نیست.', 3000); stepsBehind(7, 10, 4, 520); } },
+  { id: 'store', i: .6, w: 2, ok: () => LV.ch === 7, fn: () => { const a = Math.random() * 6.283; S3.store(me.x + Math.cos(a) * 5, me.z + Math.sin(a) * 5); say('صدای فروشگاه اصلی از سقف شنیده می‌شود... ولی هیچ راهی برای رسیدن به آن نیست.', 4200); } }
+];
+function pickEv(pool) { const I = INT[LV.ch] || .3, c = pool.filter(p => p.i <= I && !DIR.hist.slice(-2).includes(p.id) && (!p.ok || p.ok()));
+  if (!c.length) return null; const w = c.map(p => p.w / (1 + (DIR.used[p.id] || 0) * 1.6)), tot = w.reduce((a, b) => a + b, 0); let r = Math.random() * tot; for (let i = 0; i < c.length; i++) { r -= w[i]; if (r <= 0) return c[i]; } return c[c.length - 1]; }
+function runEv(p) { DIR.used[p.id] = (DIR.used[p.id] || 0) + 1; DIR.hist.push(p.id); if (DIR.hist.length > 6) DIR.hist.shift(); p.fn(); }
+function dirInit(d) {
+  const n = nowS(); PIN.style.display = 'none'; PIN.textContent = ''; Object.assign(X, { hushUntil: 0, freeze: 0, dark: 0, cut: false, pe: null });
+  Object.assign(DIR, { used: {}, hist: [], vis: new Map(), itm: {}, writes: [], pa: [], nextScare: n + rr(38, 60), nextWeird: n + rr(18, 30), quiet: n + 12, lastChase: -99, still: 0, stillCd: 0, deadCd: 0, itemCd: 0, env: n + 60, chk: 0, px: me.x, pz: me.z, mv: false, spots: wallSpots(d.MAP) }); LV.alarmUntil = 0;
+}
+function envChange() { DIR.quiet = nowS() + 10; pickOne([writeWall, writeWall, () => rugFall(false), tvProp])(); if (Math.random() < .5) say('چیزی در این راهرو تغییر کرده...', 2600); } // you came back and the place is different
+function fearTick(t, dt) {
+  if (!started || !window.LV || LV.ch < 1 || X.cut || !scene || !DIR.spots) return;
+  const ud = scene.userData, now = nowS(), e = lastState.e, ed = Math.hypot(e.x - me.x, e.z - me.z), live = !LV.noEnemy && e.x > -50, chasing = live && !!e.c && ed < 40, I = INT[LV.ch] || .3;
+  listen(); audioTick(dt, ed, chasing, live); if (chasing) DIR.lastChase = now;
+  if (ud.amb) ud.amb.intensity = LV.lit ? 3.2 : now < X.dark ? .08 : 1.2;
+  if (LV.ch >= 7) labFx(t, now, ud);
+  const mvd = Math.hypot(me.x - DIR.px, me.z - DIR.pz); DIR.px = me.x; DIR.pz = me.z; DIR.mv = mvd > .002; DIR.still = DIR.mv ? 0 : DIR.still + dt;
+  const blocked = cap || hidden || X.freeze || chasing || now - DIR.lastChase < 18 || (live && ed < 12) || performance.now() < X.hushUntil || (LV.alarmUntil || 0) > now || now < X.dark || now < DIR.quiet;
+  const ck = Math.floor(me.z / C) * 100 + Math.floor(me.x / C), v = DIR.vis.get(ck);
+  if (!v) DIR.vis.set(ck, { f: now, l: now }); else { const gap = now - v.l; v.l = now; if (!blocked && gap > 35 && now - v.f > 70 && I >= .45 && now > DIR.env) { DIR.env = now + 45; if (Math.random() < .35 + .2 * I) envChange(); } }
+  if (blocked) return;
+  if (now >= DIR.nextScare) { const p = pickEv(SCARES); if (p) { runEv(p); DIR.quiet = now + 12; DIR.nextScare = now + rr(66 - 36 * I, 100 - 48 * I); DIR.nextWeird = Math.max(DIR.nextWeird, now + 12); } else DIR.nextScare = now + 10; return; }
+  if (now >= DIR.nextWeird) { const p = pickEv(WEIRD); if (p) { runEv(p); DIR.quiet = now + 8; } DIR.nextWeird = now + rr(34 - 14 * I, 60 - 22 * I); return; }
+  if (DIR.still > 8 && now > DIR.stillCd && I >= .2) { DIR.stillCd = now + 55; DIR.still = 0; DIR.quiet = now + 15; stillBehind(); return; } // standing still too long: something comes up behind you
+  DIR.chk -= dt; if (DIR.chk > 0) return; DIR.chk = .45;
+  const fx = -Math.sin(me.ry), fz = -Math.cos(me.ry);
+  if (DIR.mv && now > DIR.deadCd && I >= .2 && rayFree(me.x, me.z, fx, fz, 6) < 2.4 && rayFree(me.x, me.z, -fx, -fz, 12) >= 8) { DIR.deadCd = now + 80; DIR.quiet = now + 15; runEv(SCARES.find(s => s.id === 'slam')); return; } // walked into a dead end: the way back closes
+  keyMeshes.forEach((m, i) => { if (!lastState.k[i] && !DIR.itm[i] && Math.hypot(m.position.x - me.x, m.position.z - me.z) < 3.4) { DIR.itm[i] = 1;
+    if (now > DIR.itemCd && Math.random() < .25 + .35 * I) { DIR.itemCd = now + 28; DIR.quiet = now + 10; pickOne([() => { lightsOut(800); const [x, z] = behindPos(4); S3.whisper(x, z, 1.2); }, shadowCross, () => { const [x, z] = behindPos(7); S3.drag(x, z, 1.1); say('چیزی پشت سرت کشیده می‌شود...', 2600); }])(); } } });
+}
+function labFx(t, now, ud) { // chapters 7-8: coloured lights, flickering fixtures, tracking cameras, alarm
+  const al = (LV.alarmUntil || 0) > now;
+  if (ud.col) { ud.col.position.set(me.x, 2.7, me.z);
+    if (LV.ch === 8) { const ph = Math.floor(t / 3200) % 3; if (al) { ud.col.color.setHex(0xff2020); ud.col.intensity = Math.sin(t / 150) > 0 ? 2.6 : .15; } else { ud.col.color.setHex([0x33ff88, 0xff3322, 0xdde8ff][ph]); ud.col.intensity = .9 + Math.random() * .3; }
+      if (ud.amb) ud.amb.color.setHex(al ? (Math.sin(t / 150) > 0 ? 0x3a1010 : 0x120505) : [0x12301f, 0x351210, 0x2a2d33][ph]); }
+    else { ud.col.color.setHex(Math.floor(t / 7000) % 2 ? 0xff3a2a : 0xffb040); ud.col.intensity = (Math.sin(t / 90) + Math.sin(t / 31) > 1.4) ? 0 : .7 + Math.random() * .2; } }
+  if (ud.fix7) ud.fix7.forEach(f => { const v = Math.sin(t / 110 + f.p) + Math.sin(t / 41 + f.p * 3) > 1.25 ? .06 : (al ? (Math.sin(t / 150) > 0 ? 1 : .2) : .85); f.m.color.copy(f.c).multiplyScalar(v); });
+  if (ud.cams) { const on = lastState.k[4]; ud.cams.forEach(c => { c.g.rotation.y = Math.atan2(me.x - c.g.position.x, me.z - c.g.position.z); c.led.material.color.setHex(on && Math.sin(t / 300) > 0 ? 0xff2020 : 0x220000); }); }
+  if (al && AC && AU.on) { if (!AU.siren) { const o = AC.createOscillator(), g = AC.createGain(); o.type = 'sawtooth'; g.gain.value = .045; o.connect(g).connect(AC.destination); o.start(); AU.siren = o; } AU.siren.frequency.value = 600 + 320 * Math.abs(Math.sin(t / 650)); }
+  else if (AU.siren) { try { AU.siren.stop(); } catch (e) {} AU.siren = null; }
+}
+// ---------- chapter 7 / 8 + system events (fired by the server or by pickups)
+const amoFace = `<svg viewBox="0 0 300 360" style="height:min(60vh,420px)"><ellipse cx="150" cy="190" rx="90" ry="125" fill="#cdbfa5"/><path d="M60 160 Q70 40 150 40 Q230 40 240 160 Q215 90 150 88 Q85 90 60 160Z" fill="#e8e8e8"/><circle cx="112" cy="165" r="26" fill="none" stroke="#222" stroke-width="5"/><circle cx="188" cy="165" r="26" fill="none" stroke="#222" stroke-width="5"/><path d="M138 165 L162 165" stroke="#222" stroke-width="5"/><circle cx="112" cy="168" r="5" fill="#111"/><circle cx="188" cy="168" r="5" fill="#111"/><path d="M105 255 Q150 300 195 255" stroke="#411" stroke-width="6" fill="none"/><path d="M110 258 L118 272 M130 268 L134 284 M170 268 L166 284 M190 258 L182 272" stroke="#eee" stroke-width="5"/></svg>`;
+const loneRb = i => `<svg viewBox="0 0 200 120" style="position:absolute;inset:0;width:100%;height:100%"><g transform="translate(${(i * 37) % 60 - 30} 0)"><rect x="88" y="14" width="24" height="98" fill="#050505"/><circle cx="100" cy="18" r="9" fill="#050505"/><rect x="95" y="16" width="4" height="2" fill="#f22"/><rect x="102" y="16" width="4" height="2" fill="#f22"/></g></svg>`;
+const camTile = (i, m) => `<div style="position:relative;height:min(26vh,200px);background:repeating-linear-gradient(0deg,#0d150f 0 3px,#0a100c 3px 6px);border:2px solid ${m ? '#e22' : '#2a4a34'};overflow:hidden"><span style="position:absolute;top:4px;left:8px;color:#6f8;font:12px monospace">CAM 0${i}</span><span style="position:absolute;top:4px;right:8px;color:#e44;font:12px monospace">● REC</span>${m === 'rb' ? loneRb(i) : m === 'bh' ? person(true) : ''}</div>`;
+const camGrid = ms => `<div style="position:absolute;inset:0;background:#000d;display:flex;align-items:center;justify-content:center"><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;width:min(92vw,760px)">${[1, 2, 3, 4].map(i => camTile(i, ms[i - 1])).join('')}</div></div>`;
+Object.assign(EV, {
+  stairs: () => { if (LV.retry) { say('دوباره وارد طبقه سوم می‌شوی...', 2500); return; } X.freeze = 1; const ln = ['«برنگرد.»', '«اون پشتته.»', '«چراغ رو خاموش نکن.»'];
+    const o = overlay(`<div style="position:absolute;inset:0;background:#000;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;color:#c22;font-size:clamp(20px,4vw,38px);text-shadow:0 0 12px #800">${stairs}<div id="wl" style="min-height:1.6em"></div></div>`, 11000); noiseBurst(.6, .1, 300);
+    for (let i = 0; i < 12; i++) setTimeout(() => pbeep(80 + (i % 2) * 10, .1, .15, (i % 2) * .4 - .2, 'triangle'), 400 + i * 600);
+    ln.forEach((t, i) => setTimeout(() => { const w = o.querySelector('#wl'); if (w) w.textContent = t; pbeep(50, .5, .2); }, 1500 + i * 2500));
+    setTimeout(() => { o.style.transition = 'opacity 1.2s'; o.style.opacity = 0; }, 9300);
+    setTimeout(() => { X.freeze = 0; beep(60, .8, .5); say('در فلزی بزرگ را باز می‌کنی... طبقهٔ سوم زیرزمین نمایان می‌شود.', 4200); }, 9800); },
+  rugfall: () => rugFall(true),
+  lift: () => { const l = scene.userData.lift || { x: me.x + 3, z: me.z }; S3.clank(l.x, l.z, 1.4); setTimeout(() => S3.clank(l.x, l.z, 1.1), 700); setTimeout(() => S3.creak(l.x, l.z, 1.5), 1400); lightsOut(500); say('آسانسور خراب... صدای کابل‌ها و طبقه‌هایی که بالا و پایین می‌روند.', 4000); },
+  writing: () => { writeWall(); say('روی دیوار چیزی نوشته شده...', 2500); },
+  cams: () => { say('مانیتورهای دوربین‌های امنیتی روشن می‌شوند...', 2600); const o = overlay(camGrid([0, 0, 0, 0]), 9600), set = (ms, m) => setTimeout(() => { if (o.isConnected) o.innerHTML = camGrid(m); }, ms);
+    set(1800, ['rb', 0, 0, 0]); set(4000, ['rb', 'rb', 0, 0]); set(6500, ['rb', 'rb', 'bh', 0]); setTimeout(() => { crackle(); pbeep(48, 1.6, .3, 0, 'sawtooth'); }, 6500);
+    setTimeout(() => { say('سریع برمی‌گردی... هیچ‌کس وجود ندارد.', 3200); const [x, z] = behindPos(2.5); S3.whisper(x, z, 1); }, 9800); },
+  phone: () => { const q = (ms, f) => setTimeout(f, ms); say('تلفن اتاق نگهبانی زنگ می‌زند...', 2600);
+    [0, 1.2, 2.4].forEach(t => q(t * 1000, () => { pbeep(1400, .1, .2, 0, 'square'); setTimeout(() => pbeep(1400, .1, .2, 0, 'square'), 160); }));
+    q(3600, () => { crackle(); say('تو: «بله؟»', 1800); }); q(5200, () => say('پژمان جمشیدی: «گوش کن... تو نباید به طبقه سوم می‌اومدی.»', 3400)); q(8800, () => say('تو: «چرا؟»', 1600));
+    q(10600, () => say('پژمان جمشیدی: «چون اون چیزی که پایین نگه داشتیم... دیگه رامبد نیست.»', 4200));
+    q(15000, () => { beep(50, .8, .5); crackle(); say('(تماس قطع شد) تمام چراغ‌ها خاموش می‌شوند...', 3000); lightsOut(6000); for (let i = 0; i < 8; i++) setTimeout(() => { const [x, z] = behindPos(16 - i * 1.6); S3.drag(x, z, 1.2); }, i * 650); });
+    q(19500, () => say('صدای کشیده شدن چیزی سنگین در راهرو...', 3500)); },
+  welcome: () => { crackle(); bell(); say('عمو پورنگ (از بلندگو): «به آزمایشگاه اصلی خوش اومدی!»', 3500); setTimeout(() => say('عمو پورنگ (از بلندگو): «بالاخره وقتشه حقیقت رو بفهمی.»', 3500), 3800); },
+  amoface: () => { setTimeout(() => { crackle(); const o = overlay(`${KF}<div style="position:absolute;inset:0;background:#000d;display:flex;align-items:center;justify-content:center"><div style="border:14px solid #2c312e;background:linear-gradient(135deg,#143a30,#04100c);padding:24px 40px;text-align:center;color:#8fa;font-size:clamp(16px,3vw,26px);animation:mf .25s infinite">${amoFace}<div style="margin-top:10px">«داری به چیزهایی دست می‌زنی که نباید.»</div></div></div>`, 4200); sting(.4);
+    setTimeout(() => { o.innerHTML = '<div style="position:absolute;inset:0;background:#000"></div>'; noiseBurst(.5, .3, 3000); }, 3600); }, 800); },
+  lightsout: () => { const r = freeDir(10, 0, 5), sc = scene; say('چراغ‌ها خاموش می‌شوند...', 2000); let g = null;
+    const dark = ms => lightsOut(ms), show = fr => { if (scene !== sc) return; if (!r) { rambodNear(); return; } if (g) scene.remove(g); g = mkRambod(); g.position.set(me.x + r.dx * Math.max(3, r.f * fr), 0, me.z + r.dz * Math.max(3, r.f * fr)); g.lookAt(me.x, 0, me.z); scene.add(g); pbeep(45, .5, .3); }, hide = () => { if (g) { scene.remove(g); g = null; } };
+    dark(1500); setTimeout(() => show(1), 1600); setTimeout(() => { dark(1200); hide(); }, 3000); setTimeout(() => show(.5), 4300); setTimeout(() => { dark(1200); hide(); }, 5600); setTimeout(() => { show(.18); sting(.4); }, 6900); setTimeout(hide, 7400); },
+  tubes: () => { say('از داخل یکی از لوله‌های شیشه‌ای صدای ضربه می‌آید...', 3500); const a = Math.random() * 6.283, x = me.x + Math.cos(a) * 7, z = me.z + Math.sin(a) * 7; [0, 600, 1300].forEach(t => setTimeout(() => S3.clank(x, z, 1.3), t)); setTimeout(() => S3.whisper(x, z, 1), 2000); },
+  machineoff: () => { LV.alarmUntil = nowS() + 45; crackle(); say('آژیر خطر فعال شد! عمو پورنگ (از بلندگو): «نه! نه! تو نباید دستگاه رو خاموش می‌کردی!»', 5000); setTimeout(() => say('رامبد جوان وارد آزمایشگاه شده است! دستگاه‌ها و درها را به نفع خودت استفاده کن و فرار کن!', 4500), 5200); },
+  secoff: () => { LV.alarmUntil = 0; say('سیستم امنیتی غیرفعال شد؛ آژیر قطع شد.', 3000); },
+  farseen: () => { pbeep(48, 1.6, .25); say('در دوردست... یک نفر ایستاده است.', 2600); },
+  hush: () => { X.hushUntil = performance.now() + 2800; },
+  ambush: () => { pbeep(40, .8, .5); noiseBurst(.4, .3, 700); navigator.vibrate?.(120); say('چیزی خیلی نزدیک است! فرار کن!', 2500); }
+});
+const labMon = () => `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;width:min(92vw,760px)">${[1, 2, 3, 4, 5, 6].map(i => `<div style="position:relative;height:min(24vh,170px);background:repeating-linear-gradient(0deg,#0d150f 0 3px,#0a100c 3px 6px);border:2px solid #2a4a34;overflow:hidden"><span style="position:absolute;top:4px;left:8px;color:#6f8;font:12px monospace">SUBJECT</span>${person(false)}</div>`).join('')}</div>`;
+Object.assign(CUTS, {
+  7: async ({ T, V }) => { beep(55, 1.2, .5); await T('رمز را وارد می‌کنی... در آزمایشگاه مخفی با صدای سنگینی باز می‌شود.', 3800); V(labMon()); crackle(); await T('داخل اتاق تعداد زیادی مانیتور روشن است...', 3400); pbeep(48, 1.6, .3, 0, 'sawtooth'); await T('تمام مانیتورها تصویر تو را نشان می‌دهند.', 4000, 'color:#f66');
+    V(''); beep(60, .6, .5); await T('روی دیوار نوشته شده:', 2200); await T('«آزمایش نهایی آغاز شد.»', 5200, 'color:#c11;font-weight:700;text-shadow:0 0 14px #800;font-size:1.3em'); await T('', 1600); },
+  8: async ({ T, V }) => { beep(50, 1.2, .5); await T('به اتاق کنترل پروژه R می‌رسی...', 3000); crackle();
+    await T('<div style="font-family:monospace;text-align:left;direction:ltr;color:#6f8;line-height:2.1;text-shadow:0 0 10px #0f6">SUBJECT: PLAYER<br>STATUS: FINAL PHASE<br>PROJECT R: ACTIVE</div>', 6000, 'border:2px solid #2f6;padding:20px 30px;background:#021208');
+    noiseBurst(.6, .4, 800); await T('', 700); beep(40, 1.2, .6); await T('صدای عمو پورنگ:<br>«خب... حالا دیگه خودت وارد آزمایش شدی.»', 5200, 'color:#c66'); await T('', 2000); }
+});
